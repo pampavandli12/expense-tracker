@@ -2,12 +2,12 @@ import React from "react";
 import { Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-function Home() {
+function Settings() {
   return (
     <SafeAreaView>
-      <Text>Home</Text>
+      <Text>Settings</Text>
     </SafeAreaView>
   );
 }
 
-export default Home;
+export default Settings;
