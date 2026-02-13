@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 import { Button, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import "./global.css";
 
 export default function Index() {
   const router = useRouter();
@@ -15,7 +16,9 @@ export default function Index() {
         alignItems: "center",
       }}
     >
-      <Text>Know where your money goes every month</Text>
+      <Text className="text-xl font-bold">
+        Know where your money goes every month
+      </Text>
       <Text>
         Track income, expenses, subscriptions, EMI's and loans and many more
       </Text>
