@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Button, Text } from "react-native";
+import { Text, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import "./global.css";
 
@@ -9,20 +9,21 @@ export default function Index() {
     router.navigate("/(tabs)");
   };
   return (
-    <SafeAreaView
-      style={{
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
-      <Text className="text-xl font-bold">
+    <SafeAreaView className="flex-1 items-center justify-center gap-4 p-4">
+      {/* Add an Image here so that intro screen looks good  */}
+      <Text className="text-3xl font-bold text-center text-text-primary">
         Know where your money goes every month
       </Text>
-      <Text>
-        Track income, expenses, subscriptions, EMI's and loans and many more
+      <Text className="text-base text-center text-text-secondary">
+        Track income, expenses, subscriptions, EMI, loans and stay within your
+        budget.
       </Text>
-      <Button title="Get Started" onPress={() => redirectToHome()} />
+      <TouchableOpacity
+        onPress={() => redirectToHome()}
+        className="px-6 py-3 mt-4 rounded-lg bg-primary-500 w-full"
+      >
+        <Text className="text-lg font-medium  text-center">Get Started</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

@@ -1,3 +1,4 @@
+import { platformSelect } from "nativewind/theme";
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   // NOTE: Update this to include the paths to all files that contain Nativewind classes.
@@ -48,7 +49,12 @@ module.exports = {
         "4xl": ["36px", { lineHeight: "43px" }],
       },
       fontFamily: {
-        sans: ["System"],
+        example: ["ExampleFontFamily"],
+        system: platformSelect({
+          ios: "Georgia",
+          android: "manrope",
+          default: "manrope",
+        }),
       },
       borderRadius: {
         none: "0",
