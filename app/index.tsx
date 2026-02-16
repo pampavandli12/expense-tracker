@@ -1,28 +1,43 @@
+import AppText from "@/components/AppText";
+import { useAppTheme } from "@/lib/theme/useAppTheme";
 import { useRouter } from "expo-router";
-import { Text, TouchableOpacity } from "react-native";
+import LottieView from "lottie-react-native";
+import { TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import "./global.css";
 
 export default function Index() {
+  const { colors } = useAppTheme();
   const router = useRouter();
   const redirectToHome = () => {
     router.navigate("/(tabs)");
   };
   return (
-    <SafeAreaView className="flex-1 items-center justify-center gap-4 p-4">
+    <SafeAreaView
+      className="flex-1 items-center justify-center gap-4 p-4"
+      style={{ backgroundColor: colors.background.base }}
+    >
       {/* Add an Image here so that intro screen looks good  */}
-      <Text className="text-3xl font-bold text-center text-text-primary">
+      <LottieView
+        source={require("../assets/Manage Money.json")}
+        autoPlay
+        loop={true}
+        style={{ width: 220, height: 220 }}
+      />
+      <AppText className="text-3xl font-bold text-center">
         Know where your money goes every month
-      </Text>
-      <Text className="text-base text-center text-text-secondary">
+      </AppText>
+      <AppText tone="secondary" className="text-base text-center">
         Track income, expenses, subscriptions, EMI, loans and stay within your
         budget.
-      </Text>
+      </AppText>
       <TouchableOpacity
         onPress={() => redirectToHome()}
-        className="px-6 py-3 mt-4 rounded-lg bg-primary-500 w-full"
+        className="px-6 py-3 mt-4 rounded-lg w-full"
+        style={{ backgroundColor: colors.brand.primary }}
       >
-        <Text className="text-lg font-medium  text-center">Get Started</Text>
+        <AppText tone="inverse" className="text-lg font-medium text-center">
+          Get Started
+        </AppText>
       </TouchableOpacity>
     </SafeAreaView>
   );

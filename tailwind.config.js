@@ -50,8 +50,9 @@ module.exports = {
       },
       fontFamily: {
         example: ["ExampleFontFamily"],
+        sans: ["manrope", "Manrope", "system-ui", "sans-serif"],
         system: platformSelect({
-          ios: "Georgia",
+          ios: "manrope",
           android: "manrope",
           default: "manrope",
         }),

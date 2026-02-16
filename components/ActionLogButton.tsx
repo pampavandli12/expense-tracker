@@ -1,7 +1,8 @@
-import { COLORS } from "@/lib/constant";
+import AppText from "@/components/AppText";
+import { useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Pressable, Text, TouchableOpacity } from "react-native";
+import { TouchableOpacity, View } from "react-native";
 
 const ActionLogButton = ({
   title,
@@ -10,26 +11,40 @@ const ActionLogButton = ({
   title: string;
   iconName: string;
 }) => {
+  const { colors } = useAppTheme();
+  const isExpenseButton = title === "Add Expense";
+
   return (
     <TouchableOpacity
-      className="flex-1 flex-col rounded-lg p-4 items-center gap-4 shadow-md"
+      className="flex-1 flex-col rounded-lg p-4 items-center gap-4"
       style={{
-        backgroundColor:
-          title === "Add Expense" ? COLORS.backgroundLight : COLORS.textPrimary,
+        backgroundColor: isExpenseButton
+          ? colors.background.surface
+          : colors.brand.primary,
+        borderColor: colors.border.default,
+        borderWidth: isExpenseButton ? 1 : 0,
       }}
     >
-      <Pressable className="bg-white/20  rounded-full p-3">
+      <View
+        className="rounded-full p-3"
+        style={{
+          backgroundColor: isExpenseButton
+            ? colors.background.subtle
+            : colors.brand.primarySoft,
+        }}
+      >
         <Ionicons
-          name="add"
+          name={iconName as any}
           size={20}
-          color={
-            title === "Add Expense"
-              ? COLORS.backgroundLight
-              : COLORS.textPrimary
-          }
+          color={isExpenseButton ? colors.icon.muted : colors.text.inverse}
         />
-      </Pressable>
-      <Text className="text-text-primary">{title}</Text>
+      </View>
+      <AppText
+        tone={isExpenseButton ? "primary" : "inverse"}
+        className="font-semibold"
+      >
+        {title}
+      </AppText>
     </TouchableOpacity>
   );
 };

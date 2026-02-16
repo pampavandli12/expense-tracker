@@ -1,27 +1,45 @@
-import { COLORS } from "@/lib/constant";
+import AppText from "@/components/AppText";
+import { useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 
 const BudgetViewCard = () => {
+  const { colors } = useAppTheme();
+
   return (
-    <View className="flex bg-background-light p-4 mt-2 rounded-lg shadow-md">
+    <View
+      className="flex p-4 mt-2 rounded-lg"
+      style={{
+        backgroundColor: colors.background.surface,
+        borderColor: colors.border.default,
+        borderWidth: 1,
+      }}
+    >
       <View className="flex-row items-center gap-2">
-        <Text className="font-semibold text-md">₹ 22000</Text>
-        <Text className="text-sm text-text-secondary">spend of ₹ 40000</Text>
+        <AppText className="font-semibold text-md">₹ 22000</AppText>
+        <AppText tone="secondary" className="text-sm">
+          spend of ₹ 40000
+        </AppText>
       </View>
-      <View className="relative bg-gray-200 h-5 w-full rounded-md mt-3">
-        <View className="absolute left-0 top-0 bottom-0 w-[84%] bg-primary-400 rounded-md"></View>
+      <View
+        className="relative h-5 w-full rounded-md mt-3"
+        style={{ backgroundColor: colors.chart.track }}
+      >
+        <View
+          className="absolute left-0 top-0 bottom-0 w-[84%] rounded-md"
+          style={{ backgroundColor: colors.chart.progress }}
+        ></View>
       </View>
       <View className="flex-row items-center gap-2 mt-3">
         <Ionicons
           name="checkmark-circle"
           size={20}
-          color={true ? COLORS.checkmark : COLORS.warning}
+          color={true ? colors.status.success : colors.status.warning}
         />
-        <Text className="text-primary-400 text-sm font-semibold">
-          YOU'RE WITHIN BUDGET
-        </Text>
+        <AppText tone="success" className="text-sm font-semibold">
+          YOU&apos;RE WITHIN BUDGET
+        </AppText>
       </View>
     </View>
   );

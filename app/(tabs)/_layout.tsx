@@ -1,11 +1,33 @@
+import { useAppTheme } from "@/lib/theme/useAppTheme";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import { Tabs } from "expo-router";
 
 export default function RootLayout() {
+  const { colors, isDark } = useAppTheme();
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
+        tabBarActiveTintColor: colors.brand.primary,
+        tabBarInactiveTintColor: colors.text.secondary,
+        tabBarStyle: {
+          backgroundColor: colors.background.surface,
+          borderTopColor: colors.border.default,
+          height: 70,
+          paddingTop: 8,
+          paddingBottom: 10,
+        },
+        tabBarLabelStyle: {
+          fontFamily: "manrope",
+        },
+        sceneStyle: {
+          backgroundColor: colors.background.base,
+        },
+        tabBarItemStyle: {
+          paddingVertical: isDark ? 2 : 0,
+        },
       }}
     >
       <Tabs.Screen
