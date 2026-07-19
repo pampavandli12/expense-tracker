@@ -8,6 +8,12 @@ import {
   spendingTrend,
 } from "@/db/repository";
 import type { Account } from "@/db/schema";
+import {
+  formatChartAxisValue,
+  getBarChartLayout,
+  getChartScale,
+  getLineChartLayout,
+} from "@/lib/chartLayout";
 import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -72,7 +78,7 @@ export default function Stats() {
   );
 
   const total = categories.reduce((sum, item) => sum + item.total, 0);
-  const chartWidth = Math.max(270, width - 94);
+  const cardContentWidth = Math.max(236, width - 76);
   const latest = trend.at(-1);
   const net = (latest?.income ?? 0) - (latest?.expense ?? 0);
   const previousExpense = trend.at(-2)?.expense ?? 0;
@@ -90,6 +96,48 @@ export default function Stats() {
       })),
     [categories],
   );
+  const barScale = useMemo(
+    () =>
+      getChartScale(
+        trend.flatMap((item) => [item.income / 100, item.expense / 100]),
+        baseCurrency,
+      ),
+    [baseCurrency, trend],
+  );
+  const lineScale = useMemo(
+    () =>
+      getChartScale(
+        trend.map((item) => item.expense / 100),
+        baseCurrency,
+      ),
+    [baseCurrency, trend],
+  );
+  const barPlotWidth = Math.max(
+    180,
+    cardContentWidth - barScale.yAxisLabelWidth,
+  );
+  const linePlotWidth = Math.max(
+    180,
+    cardContentWidth - lineScale.yAxisLabelWidth,
+  );
+  const barLayout = useMemo(
+    () => getBarChartLayout(trend.length, barPlotWidth),
+    [barPlotWidth, trend.length],
+  );
+  const lineLayout = useMemo(
+    () => getLineChartLayout(trend.length, linePlotWidth),
+    [linePlotWidth, trend.length],
+  );
+  const xAxisLabelStyle = useMemo(
+    () => ({
+      color: colors.text.muted,
+      fontSize: 10,
+      lineHeight: 14,
+      textAlign: "center" as const,
+      includeFontPadding: false,
+    }),
+    [colors.text.muted],
+  );
   const bars = useMemo(
     () =>
       trend.flatMap((item) => [
@@ -98,28 +146,29 @@ export default function Stats() {
           label: item.month,
           frontColor: colors.brand.primary,
           gradientColor: "#8CF5B0",
-          spacing: 4,
-          labelTextStyle: { color: colors.text.muted, fontSize: 11 },
+          spacing: barLayout.pairSpacing,
+          labelWidth: barLayout.groupWidth,
+          labelTextStyle: xAxisLabelStyle,
         },
         {
           value: item.expense / 100,
           frontColor: "#7DA7F7",
           gradientColor: "#C9DAFF",
-          spacing: 17,
+          spacing: barLayout.groupSpacing,
         },
       ]),
-    [trend, colors],
+    [barLayout, trend, xAxisLabelStyle, colors],
   );
   const line = useMemo(
     () =>
       trend.map((item) => ({
         value: item.expense / 100,
         label: item.month,
-        labelTextStyle: { color: colors.text.muted, fontSize: 11 },
+        labelTextStyle: xAxisLabelStyle,
         dataPointColor: "#2463EB",
         dataPointRadius: 4,
       })),
-    [trend, colors],
+    [trend, xAxisLabelStyle],
   );
 
   return (
@@ -353,29 +402,38 @@ export default function Stats() {
             <Legend />
             <View className="mt-3 overflow-hidden">
               {trend.some((x) => x.income || x.expense) ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <BarChart
-                    key={`bar-${period}-${chartRevision}`}
-                    data={bars}
-                    width={chartWidth}
-                    height={190}
-                    barWidth={11}
-                    roundedTop
-                    showGradient
-                    isAnimated={!reducedMotion}
-                    animationDuration={650}
-                    hideRules
-                    yAxisThickness={0}
-                    xAxisThickness={0}
-                    yAxisTextStyle={{ color: colors.text.muted, fontSize: 10 }}
-                    noOfSections={4}
-                    formatYLabel={(label) =>
-                      `${baseCurrency === "INR" ? "₹" : `${baseCurrency} `}${Math.round(
-                        Number(label) / 1000,
-                      )}k`
-                    }
-                  />
-                </ScrollView>
+                <BarChart
+                  key={`bar-${period}-${chartRevision}`}
+                  data={bars}
+                  width={barPlotWidth}
+                  height={190}
+                  barWidth={barLayout.barWidth}
+                  initialSpacing={barLayout.initialSpacing}
+                  endSpacing={barLayout.endSpacing}
+                  disableScroll={!barLayout.scrollEnabled}
+                  showScrollIndicator={false}
+                  scrollToEnd={barLayout.scrollEnabled}
+                  scrollAnimation={!reducedMotion}
+                  nestedScrollEnabled
+                  roundedTop
+                  showGradient
+                  isAnimated={!reducedMotion}
+                  animationDuration={650}
+                  hideRules
+                  yAxisThickness={0}
+                  xAxisThickness={0}
+                  yAxisLabelWidth={barScale.yAxisLabelWidth}
+                  yAxisTextStyle={{ color: colors.text.muted, fontSize: 10 }}
+                  xAxisTextNumberOfLines={1}
+                  xAxisLabelsHeight={22}
+                  labelsDistanceFromXaxis={4}
+                  noOfSections={barScale.noOfSections}
+                  maxValue={barScale.maxValue}
+                  stepValue={barScale.stepValue}
+                  formatYLabel={(label) =>
+                    formatChartAxisValue(Number(label), baseCurrency)
+                  }
+                />
               ) : (
                 <Empty
                   loading={loading}
@@ -457,60 +515,76 @@ export default function Stats() {
             />
             {line.some((x) => x.value) ? (
               <View className="mt-3 overflow-hidden">
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <LineChart
-                    key={`line-${period}-${chartRevision}`}
-                    data={line}
-                    width={chartWidth}
-                    height={205}
-                    curved
-                    area
-                    color="#2463EB"
-                    startFillColor={isDark ? "#2463EB66" : "#BFD3FF"}
-                    endFillColor={colors.background.surface}
-                    startOpacity={0.45}
-                    endOpacity={0.02}
-                    thickness={3}
-                    isAnimated={!reducedMotion}
-                    animateOnDataChange={!reducedMotion}
-                    animationDuration={750}
-                    onDataChangeAnimationDuration={750}
-                    hideRules
-                    yAxisThickness={0}
-                    xAxisThickness={0}
-                    yAxisTextStyle={{ color: colors.text.muted, fontSize: 10 }}
-                    noOfSections={4}
-                    focusEnabled
-                    showStripOnFocus
-                    stripColor="#2463EB33"
-                    showTextOnFocus
-                    showDataPointOnFocus
-                    pointerConfig={{
-                      pointerStripColor: "#2463EB55",
-                      pointerColor: "#2463EB",
-                      radius: 5,
-                      pointerLabelWidth: 90,
-                      pointerLabelHeight: 42,
-                      activatePointersOnLongPress: true,
-                      pointerLabelComponent: (points: any[]) => (
-                        <View
-                          className="rounded-xl px-3 py-2"
-                          style={{ backgroundColor: colors.text.primary }}
+                <LineChart
+                  key={`line-${period}-${chartRevision}`}
+                  data={line}
+                  width={linePlotWidth}
+                  height={205}
+                  spacing={lineLayout.spacing}
+                  initialSpacing={lineLayout.initialSpacing}
+                  endSpacing={lineLayout.endSpacing}
+                  disableScroll={!lineLayout.scrollEnabled}
+                  showScrollIndicator={false}
+                  scrollToEnd={lineLayout.scrollEnabled}
+                  scrollAnimation={!reducedMotion}
+                  nestedScrollEnabled
+                  curved
+                  area
+                  color="#2463EB"
+                  startFillColor={isDark ? "#2463EB66" : "#BFD3FF"}
+                  endFillColor={colors.background.surface}
+                  startOpacity={0.45}
+                  endOpacity={0.02}
+                  thickness={3}
+                  isAnimated={!reducedMotion}
+                  animateOnDataChange={!reducedMotion}
+                  animationDuration={750}
+                  onDataChangeAnimationDuration={750}
+                  interpolateMissingValues={false}
+                  extrapolateMissingValues={false}
+                  hideRules
+                  yAxisThickness={0}
+                  xAxisThickness={0}
+                  yAxisLabelWidth={lineScale.yAxisLabelWidth}
+                  yAxisTextStyle={{ color: colors.text.muted, fontSize: 10 }}
+                  xAxisTextNumberOfLines={1}
+                  xAxisLabelsHeight={22}
+                  noOfSections={lineScale.noOfSections}
+                  maxValue={lineScale.maxValue}
+                  stepValue={lineScale.stepValue}
+                  formatYLabel={(label: string) =>
+                    formatChartAxisValue(Number(label), baseCurrency)
+                  }
+                  focusEnabled
+                  showStripOnFocus
+                  stripColor="#2463EB33"
+                  showTextOnFocus
+                  showDataPointOnFocus
+                  pointerConfig={{
+                    pointerStripColor: "#2463EB55",
+                    pointerColor: "#2463EB",
+                    radius: 5,
+                    pointerLabelWidth: 90,
+                    pointerLabelHeight: 42,
+                    activatePointersOnLongPress: true,
+                    pointerLabelComponent: (points: any[]) => (
+                      <View
+                        className="rounded-xl px-3 py-2"
+                        style={{ backgroundColor: colors.text.primary }}
+                      >
+                        <AppText
+                          className="text-xs font-bold"
+                          style={{ color: colors.background.surface }}
                         >
-                          <AppText
-                            className="text-xs font-bold"
-                            style={{ color: colors.background.surface }}
-                          >
-                            {formatMoney(
-                              Math.round((points[0]?.value ?? 0) * 100),
-                              baseCurrency,
-                            )}
-                          </AppText>
-                        </View>
-                      ),
-                    }}
-                  />
-                </ScrollView>
+                          {formatMoney(
+                            Math.round((points[0]?.value ?? 0) * 100),
+                            baseCurrency,
+                          )}
+                        </AppText>
+                      </View>
+                    ),
+                  }}
+                />
               </View>
             ) : (
               <Empty
