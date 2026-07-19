@@ -1,9 +1,9 @@
-import m0000 from "../drizzle/0000_neat_crystal.sql";
 import journal from "../drizzle/meta/_journal.json";
+import { bundledMigrationSql } from "./migrations.generated";
 
 const migrations = {
   journal,
-  migrations: { m0000 },
+  migrations: bundledMigrationSql,
 };
 
 export default migrations;

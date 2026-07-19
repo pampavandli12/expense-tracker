@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
     "test:watch": "jest --watch",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate && npm run db:bundle",
+    "db:bundle": "node ./scripts/bundle-drizzle-migrations.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -61,7 +62,6 @@
     "@testing-library/react-native": "13.3.3",
     "@types/jest": "^29.5.14",
     "@types/react": "~19.1.0",
-    "babel-plugin-inline-import": "^3.0.0",
     "drizzle-kit": "^0.31.10",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
