@@ -67,13 +67,31 @@ export function PrimaryButton({
         colors={[colors.brand.primarySoft, colors.brand.primary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        className="h-16 items-center justify-center"
+        style={{
+          height: 64,
+          width: "100%",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
       >
         {loading ? (
           <ActivityIndicator color="#07152C" />
         ) : (
-          <View className="flex-row items-center gap-2">
-            <AppText className="text-lg font-extrabold">{title}</AppText>
+          <View
+            style={{
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+            }}
+          >
+            <AppText
+              className="text-lg font-extrabold"
+              numberOfLines={1}
+              maxFontSizeMultiplier={1.4}
+            >
+              {title}
+            </AppText>
             <Ionicons name="checkmark-circle" size={21} color="#0A2940" />
           </View>
         )}
