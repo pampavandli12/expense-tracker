@@ -65,12 +65,15 @@ export default function Home() {
   const percent = budget ? Math.round((budgetSpent / budget.amount) * 100) : 0;
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       className="flex-1"
       style={{ backgroundColor: colors.background.base }}
     >
       <ScrollView
+        style={{ flex: 1 }}
+        contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 18, paddingBottom: 120, gap: 20 }}
+        contentContainerStyle={{ padding: 18, paddingBottom: 36, gap: 20 }}
       >
         <View className="flex-row items-center justify-between">
           <Pressable
@@ -431,23 +434,27 @@ function QuickAction({
   onPress: () => void;
 }) {
   const { colors } = useAppTheme();
+  const cardStyle = {
+    width: "100%" as const,
+    height: 136,
+    padding: 20,
+    borderRadius: 24,
+    justifyContent: "space-between" as const,
+  };
   return (
     <Pressable
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onPress();
       }}
-      className="flex-1 overflow-hidden rounded-3xl active:opacity-85"
+      className="min-w-0 flex-1 overflow-hidden rounded-3xl active:opacity-85"
+      style={{ height: cardStyle.height }}
     >
       {primary ? (
         <LinearGradient
           colors={[colors.brand.primarySoft, colors.brand.primary]}
           style={{
-            width: "100%",
-            height: 144,
-            padding: 20,
-            borderRadius: 24,
-            justifyContent: "space-between",
+            ...cardStyle,
           }}
         >
           <View
@@ -471,9 +478,10 @@ function QuickAction({
         </LinearGradient>
       ) : (
         <View
-          className="h-36 justify-between rounded-3xl border p-5"
           style={{
+            ...cardStyle,
             backgroundColor: colors.background.surface,
+            borderWidth: 1,
             borderColor: colors.border.soft,
           }}
         >

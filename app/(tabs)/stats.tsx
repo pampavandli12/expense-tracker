@@ -124,12 +124,15 @@ export default function Stats() {
 
   return (
     <SafeAreaView
+      edges={["top", "left", "right"]}
       className="flex-1"
       style={{ backgroundColor: colors.background.base }}
     >
       <ScrollView
+        style={{ flex: 1 }}
+        contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 18, paddingBottom: 120, gap: 18 }}
+        contentContainerStyle={{ padding: 18, paddingBottom: 36, gap: 18 }}
       >
         <View className="flex-row items-end justify-between">
           <View>
