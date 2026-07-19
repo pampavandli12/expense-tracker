@@ -86,7 +86,6 @@ export default function Stats() {
       categories.map((item) => ({
         value: item.total,
         color: item.color,
-        gradientCenterColor: `${item.color}CC`,
         focused: item.id === categories[0]?.id,
       })),
     [categories],
@@ -208,6 +207,9 @@ export default function Stats() {
             <AppText
               className="mt-3 text-4xl font-extrabold"
               style={{ color: "white" }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.68}
             >
               {formatMoney(net, baseCurrency)}
             </AppText>
@@ -282,7 +284,6 @@ export default function Stats() {
                     radius={86}
                     innerRadius={61}
                     innerCircleColor={colors.background.surface}
-                    showGradient
                     isAnimated={!reducedMotion}
                     animationDuration={850}
                     sectionAutoFocus

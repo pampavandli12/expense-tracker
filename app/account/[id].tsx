@@ -63,7 +63,12 @@ export default function AccountDetailScreen() {
           <AppText tone="muted" className="text-xs font-bold tracking-widest">
             CURRENT BALANCE · {account?.currency ?? ""}
           </AppText>
-          <AppText className="mt-3 text-4xl font-extrabold">
+          <AppText
+            className="mt-3 text-4xl font-extrabold"
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.68}
+          >
             {formatMoney(account?.balance ?? 0, account?.currency)}
           </AppText>
           <AppText tone="secondary" className="mt-3 text-xs capitalize">

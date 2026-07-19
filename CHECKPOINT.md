@@ -12,10 +12,11 @@ Current Git branch: `codex/production-readiness`.
 
 - `npm run typecheck` — passing.
 - `npm run lint` — passing.
-- `npm test -- --runInBand` — 6 suites and 19 tests passing.
+- `npm test -- --runInBand` — 6 suites and 22 tests passing.
 - `npx expo install --check` — dependencies compatible with Expo SDK 54.
 - iOS Metro production export — passing.
 - Android Metro production export — passing.
+- Home and Add Expense visual regression checks passed on an iPhone 17 Pro simulator and Pixel 9a emulator.
 - Tab route filenames are normalized to lowercase for Linux/EAS compatibility.
 - `npm audit --omit=dev` — 19 moderate findings remain in the Expo SDK 54 transitive toolchain. The offered remediation requires a breaking Expo 57 upgrade and was intentionally not forced into this checkpoint.
 - `npx expo-doctor` — could not complete because it hung without output in the restricted environment. Run it again in a normal networked terminal before producing signed builds.

@@ -171,6 +171,9 @@ export default function Home() {
             <AppText
               className="mt-3 text-4xl font-extrabold"
               style={{ color: "white" }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.68}
             >
               {formatMoney(summary.balance, baseCurrency)}
             </AppText>
@@ -394,14 +397,20 @@ function BalanceMetric({
       >
         <Ionicons name={icon} size={22} color={color} />
       </View>
-      <View>
+      <View className="min-w-0 flex-1">
         <AppText
           className="text-[10px] font-bold tracking-widest"
           style={{ color: "#AFC4CE" }}
         >
           {label}
         </AppText>
-        <AppText className="mt-1 text-base font-extrabold" style={{ color }}>
+        <AppText
+          className="mt-1 text-base font-extrabold"
+          style={{ color }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
           {formatMoney(value, currency)}
         </AppText>
       </View>
@@ -433,7 +442,13 @@ function QuickAction({
       {primary ? (
         <LinearGradient
           colors={[colors.brand.primarySoft, colors.brand.primary]}
-          className="h-36 justify-between p-5"
+          style={{
+            width: "100%",
+            height: 144,
+            padding: 20,
+            borderRadius: 24,
+            justifyContent: "space-between",
+          }}
         >
           <View
             className="h-10 w-10 items-center justify-center rounded-xl"
@@ -442,8 +457,14 @@ function QuickAction({
             <Ionicons name={icon} size={23} color="#0A2940" />
           </View>
           <View>
-            <AppText className="font-extrabold">{title}</AppText>
-            <AppText className="text-xs" style={{ color: "#194733" }}>
+            <AppText className="font-extrabold" numberOfLines={1}>
+              {title}
+            </AppText>
+            <AppText
+              className="text-xs"
+              style={{ color: "#194733" }}
+              numberOfLines={1}
+            >
               {subtitle}
             </AppText>
           </View>
@@ -463,8 +484,10 @@ function QuickAction({
             <Ionicons name={icon} size={23} color={colors.text.secondary} />
           </View>
           <View>
-            <AppText className="font-extrabold">{title}</AppText>
-            <AppText tone="secondary" className="text-xs">
+            <AppText className="font-extrabold" numberOfLines={1}>
+              {title}
+            </AppText>
+            <AppText tone="secondary" className="text-xs" numberOfLines={1}>
               {subtitle}
             </AppText>
           </View>

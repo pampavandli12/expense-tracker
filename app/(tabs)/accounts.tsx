@@ -94,6 +94,9 @@ export default function Accounts() {
             <AppText
               className="mt-3 text-4xl font-extrabold"
               style={{ color: "white" }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.68}
             >
               {formatMoney(total, baseCurrency)}
             </AppText>

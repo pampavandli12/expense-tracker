@@ -16,7 +16,15 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TransactionForm({
@@ -126,185 +134,206 @@ export default function TransactionForm({
           kind === "expense" ? "Expense" : "Income"
         }`}
       />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ padding: 20, paddingBottom: 150 }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <View>
-          <LinearGradient
-            colors={
-              isDark
-                ? ["#172B40", "#16362E"]
-                : kind === "expense"
-                  ? ["#18263A", "#35303A", "#493331"]
-                  : ["#0F253A", "#123E37", "#17613A"]
-            }
-            style={{
-              borderRadius: 26,
-              padding: 20,
-              borderWidth: 1,
-              borderColor: colors.border.soft,
-            }}
-          >
-            <AppText
-              className="text-center text-xs font-bold tracking-widest"
-              style={{ color: "#B7C9D2" }}
-            >
-              {kind === "expense" ? "ENTER AMOUNT" : "INCOME AMOUNT"}
-            </AppText>
-            <MoneyInput
-              inverse
-              value={amount}
-              onChange={setAmount}
-              currency={
-                account?.currency === "INR" ? "₹" : (account?.currency ?? "₹")
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
+          contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
+        >
+          <View>
+            <LinearGradient
+              colors={
+                isDark
+                  ? ["#172B40", "#16362E"]
+                  : kind === "expense"
+                    ? ["#18263A", "#35303A", "#493331"]
+                    : ["#0F253A", "#123E37", "#17613A"]
               }
-            />
-            {minor > 0 && (
+              style={{
+                borderRadius: 26,
+                padding: 20,
+                borderWidth: 1,
+                borderColor: colors.border.soft,
+              }}
+            >
               <AppText
-                className="text-center text-xs"
-                style={{ color: "#AFC4CE" }}
+                className="text-center text-xs font-bold tracking-widest"
+                style={{ color: "#B7C9D2" }}
               >
-                {formatMoney(minor, account?.currency)} · {account?.name}
+                {kind === "expense" ? "ENTER AMOUNT" : "INCOME AMOUNT"}
               </AppText>
-            )}
-          </LinearGradient>
-        </View>
-        <View className="mt-7">
-          <AppText className="text-lg font-extrabold">
-            {kind === "expense" ? "Choose category" : "Income source"}
-          </AppText>
-          <AppText tone="secondary" className="mb-4 text-sm">
-            Keep your insights organised
-          </AppText>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 18, padding: 4 }}
-          >
-            {categories.map((category) => (
-              <Choice
-                key={category.id}
-                selected={category.id === categoryId}
-                label={category.name.replace("Housing & ", "")}
-                icon={category.icon as any}
-                onPress={() => setCategoryId(category.id)}
+              <MoneyInput
+                inverse
+                value={amount}
+                onChange={setAmount}
+                currency={
+                  account?.currency === "INR" ? "₹" : (account?.currency ?? "₹")
+                }
               />
-            ))}
-          </ScrollView>
-        </View>
-        {kind === "expense" && (
-          <View
-            className="my-7 flex-row rounded-2xl p-1"
-            style={{ backgroundColor: colors.background.subtle }}
-          >
-            {(["variable", "fixed"] as const).map((value) => (
-              <Pressable
-                key={value}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setExpenseType(value);
-                }}
-                className="flex-1 rounded-xl py-3"
-                style={{
-                  backgroundColor:
-                    expenseType === value
-                      ? colors.background.surface
-                      : "transparent",
-                }}
-              >
+              {minor > 0 && (
                 <AppText
-                  tone={expenseType === value ? "primary" : "secondary"}
-                  className="text-center font-bold capitalize"
+                  className="text-center text-xs"
+                  style={{ color: "#AFC4CE" }}
                 >
-                  {value}
+                  {formatMoney(minor, account?.currency)} · {account?.name}
                 </AppText>
-              </Pressable>
-            ))}
+              )}
+            </LinearGradient>
           </View>
-        )}
-        <View>
-          <AppText className="text-lg font-extrabold">Account</AppText>
-          <AppText tone="secondary" className="mb-3 text-sm">
-            Where this money belongs
-          </AppText>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 10 }}
-          >
-            {accounts.map((item) => (
-              <Pressable
-                key={item.id}
-                onPress={() => {
-                  Haptics.selectionAsync();
-                  setAccountId(item.id);
-                }}
-                className="flex-row items-center gap-2 rounded-2xl px-4 py-3"
-                style={{
-                  backgroundColor:
-                    item.id === accountId
-                      ? colors.brand.primary
-                      : colors.background.surface,
-                  borderWidth: 1,
-                  borderColor:
-                    item.id === accountId
-                      ? colors.brand.primary
-                      : colors.border.soft,
-                }}
-              >
-                <Ionicons
-                  name={item.type === "cash" ? "cash" : "wallet"}
-                  size={17}
-                  color={colors.text.primary}
+          <View className="mt-7">
+            <AppText className="text-lg font-extrabold">
+              {kind === "expense" ? "Choose category" : "Income source"}
+            </AppText>
+            <AppText tone="secondary" className="mb-4 text-sm">
+              Keep your insights organised
+            </AppText>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{
+                gap: 12,
+                paddingLeft: 4,
+                paddingTop: 4,
+                paddingBottom: 4,
+                paddingRight: 20,
+              }}
+            >
+              {categories.map((category) => (
+                <Choice
+                  key={category.id}
+                  selected={category.id === categoryId}
+                  label={category.name.replace("Housing & ", "")}
+                  icon={category.icon as any}
+                  onPress={() => setCategoryId(category.id)}
                 />
-                <AppText className="font-bold">{item.name}</AppText>
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-        <View>
-          <AppText className="mb-3 mt-7 text-lg font-extrabold">
-            Details
-          </AppText>
-          <DateField value={occurredAt} onChange={setOccurredAt} />
-          <AppText
-            tone="secondary"
-            className="mb-3 mt-5 text-xs font-bold tracking-widest"
-          >
-            NOTES · OPTIONAL
-          </AppText>
-          <TextInput
-            value={notes}
-            onChangeText={setNotes}
-            multiline
-            placeholder="What was this for?"
-            placeholderTextColor={colors.text.muted}
-            className="min-h-28 rounded-3xl p-5 text-base"
-            style={{
-              color: colors.text.primary,
-              backgroundColor: colors.background.surface,
-              borderWidth: 1,
-              borderColor: colors.border.soft,
-              textAlignVertical: "top",
-            }}
+              ))}
+            </ScrollView>
+          </View>
+          {kind === "expense" && (
+            <View
+              className="my-7 flex-row rounded-2xl p-1"
+              style={{ backgroundColor: colors.background.subtle }}
+            >
+              {(["variable", "fixed"] as const).map((value) => (
+                <Pressable
+                  key={value}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setExpenseType(value);
+                  }}
+                  className="flex-1 rounded-xl py-3"
+                  style={{
+                    backgroundColor:
+                      expenseType === value
+                        ? colors.background.surface
+                        : "transparent",
+                  }}
+                >
+                  <AppText
+                    tone={expenseType === value ? "primary" : "secondary"}
+                    className="text-center font-bold capitalize"
+                  >
+                    {value}
+                  </AppText>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <View>
+            <AppText className="text-lg font-extrabold">Account</AppText>
+            <AppText tone="secondary" className="mb-3 text-sm">
+              Where this money belongs
+            </AppText>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 10 }}
+            >
+              {accounts.map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    setAccountId(item.id);
+                  }}
+                  className="flex-row items-center gap-2 rounded-2xl px-4 py-3"
+                  style={{
+                    backgroundColor:
+                      item.id === accountId
+                        ? colors.brand.primary
+                        : colors.background.surface,
+                    borderWidth: 1,
+                    borderColor:
+                      item.id === accountId
+                        ? colors.brand.primary
+                        : colors.border.soft,
+                  }}
+                >
+                  <Ionicons
+                    name={item.type === "cash" ? "cash" : "wallet"}
+                    size={17}
+                    color={colors.text.primary}
+                  />
+                  <AppText className="font-bold">{item.name}</AppText>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+          <View>
+            <AppText className="mb-3 mt-7 text-lg font-extrabold">
+              Details
+            </AppText>
+            <DateField value={occurredAt} onChange={setOccurredAt} />
+            <AppText
+              tone="secondary"
+              className="mb-3 mt-5 text-xs font-bold tracking-widest"
+            >
+              NOTES · OPTIONAL
+            </AppText>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              multiline
+              placeholder="What was this for?"
+              placeholderTextColor={colors.text.muted}
+              className="min-h-28 rounded-3xl p-5 text-base"
+              style={{
+                color: colors.text.primary,
+                backgroundColor: colors.background.surface,
+                borderWidth: 1,
+                borderColor: colors.border.soft,
+                textAlignVertical: "top",
+              }}
+            />
+          </View>
+        </ScrollView>
+        <View
+          style={{
+            paddingHorizontal: 20,
+            paddingTop: 12,
+            paddingBottom: 8,
+            backgroundColor: colors.background.base,
+            borderTopWidth: 1,
+            borderTopColor: colors.border.soft,
+          }}
+        >
+          <PrimaryButton
+            title={`${transactionId ? "Update" : "Save"} ${
+              kind === "expense" ? "Expense" : "Income"
+            }`}
+            onPress={save}
+            disabled={!valid}
+            loading={saving}
           />
         </View>
-      </ScrollView>
-      <View
-        className="absolute bottom-0 left-0 right-0 p-5"
-        style={{ backgroundColor: colors.background.base }}
-      >
-        <PrimaryButton
-          title={`${transactionId ? "Update" : "Save"} ${
-            kind === "expense" ? "Expense" : "Income"
-          }`}
-          onPress={save}
-          disabled={!valid}
-          loading={saving}
-        />
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

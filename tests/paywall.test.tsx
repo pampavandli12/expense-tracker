@@ -9,9 +9,10 @@ import {
 } from "@/services/purchases";
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace }),
+  useRouter: () => ({ replace: mockReplace, push: mockPush }),
 }));
 
 jest.mock("@/db/repository", () => ({
@@ -47,6 +48,18 @@ const restorePurchasesMock = jest.mocked(restorePurchases);
 describe("paywall states", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  it("opens bundled legal content when production URLs are not configured", async () => {
+    getPackagesMock.mockResolvedValue([]);
+    const screen = render(<Paywall />);
+    await waitFor(() => expect(screen.getByText("Terms")).toBeTruthy());
+
+    fireEvent.press(screen.getByText("Terms"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/legal",
+      params: { document: "terms" },
+    });
   });
 
   it("shows a retryable state when offerings are unavailable", async () => {

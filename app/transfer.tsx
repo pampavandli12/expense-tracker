@@ -7,7 +7,15 @@ import { useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TransferScreen() {
@@ -83,120 +91,135 @@ export default function TransferScreen() {
       style={{ backgroundColor: colors.background.base }}
     >
       <Header title="Transfer Money" />
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 20, paddingBottom: 150, gap: 20 }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        {accounts.length < 2 ? (
-          <Card>
-            <View className="items-center py-8">
-              <Ionicons
-                name="swap-horizontal"
-                size={36}
-                color={colors.text.muted}
-              />
-              <AppText className="mt-4 text-center text-lg font-extrabold">
-                Two accounts are required
-              </AppText>
-              <AppText tone="secondary" className="mt-2 text-center">
-                Add another account before creating a transfer.
-              </AppText>
-            </View>
-          </Card>
-        ) : (
-          <>
-            <Card>
-              <AccountSelector
-                label="FROM"
-                accounts={accounts}
-                selectedId={fromAccountId}
-                onSelect={setFromAccountId}
-              />
-              <View className="my-5 items-center">
-                <View
-                  className="h-10 w-10 items-center justify-center rounded-full"
-                  style={{ backgroundColor: colors.brand.primary }}
-                >
-                  <Ionicons name="arrow-down" size={20} color="#0A2940" />
-                </View>
-              </View>
-              <AccountSelector
-                label="TO"
-                accounts={availableDestinations}
-                selectedId={toAccountId}
-                onSelect={setToAccountId}
-              />
-            </Card>
-
-            <Card>
-              <AmountField
-                label="AMOUNT SENT"
-                currency={fromAccount?.currency ?? "INR"}
-                value={sourceAmount}
-                onChange={(value) => {
-                  setSourceAmount(value);
-                  if (sameCurrency) setDestinationAmount(value);
-                }}
-              />
-              {!sameCurrency && (
-                <View className="mt-5">
-                  <AmountField
-                    label="AMOUNT RECEIVED"
-                    currency={toAccount?.currency ?? "INR"}
-                    value={destinationAmount}
-                    onChange={setDestinationAmount}
-                  />
-                  <AppText tone="secondary" className="mt-3 text-xs">
-                    Enter the destination amount manually. No exchange rate is
-                    fetched or stored.
-                  </AppText>
-                </View>
-              )}
-            </Card>
-
-            <DateField value={occurredAt} onChange={setOccurredAt} />
-
-            <View>
-              <AppText
-                tone="muted"
-                className="mb-2 text-xs font-bold tracking-widest"
-              >
-                NOTES · OPTIONAL
-              </AppText>
-              <TextInput
-                accessibilityLabel="Transfer notes"
-                value={notes}
-                onChangeText={setNotes}
-                multiline
-                placeholder="What is this transfer for?"
-                placeholderTextColor={colors.text.muted}
-                className="min-h-24 rounded-3xl p-5"
-                style={{
-                  backgroundColor: colors.background.surface,
-                  color: colors.text.primary,
-                  borderWidth: 1,
-                  borderColor: colors.border.soft,
-                  textAlignVertical: "top",
-                }}
-              />
-            </View>
-          </>
-        )}
-      </ScrollView>
-      {accounts.length >= 2 && (
-        <View
-          className="absolute bottom-0 left-0 right-0 p-5"
-          style={{ backgroundColor: colors.background.base }}
+        <ScrollView
+          style={{ flex: 1 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode={
+            Platform.OS === "ios" ? "interactive" : "on-drag"
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 20, paddingBottom: 32, gap: 20 }}
         >
-          <PrimaryButton
-            title="Complete Transfer"
-            onPress={save}
-            disabled={!valid}
-            loading={saving}
-          />
-        </View>
-      )}
+          {accounts.length < 2 ? (
+            <Card>
+              <View className="items-center py-8">
+                <Ionicons
+                  name="swap-horizontal"
+                  size={36}
+                  color={colors.text.muted}
+                />
+                <AppText className="mt-4 text-center text-lg font-extrabold">
+                  Two accounts are required
+                </AppText>
+                <AppText tone="secondary" className="mt-2 text-center">
+                  Add another account before creating a transfer.
+                </AppText>
+              </View>
+            </Card>
+          ) : (
+            <>
+              <Card>
+                <AccountSelector
+                  label="FROM"
+                  accounts={accounts}
+                  selectedId={fromAccountId}
+                  onSelect={setFromAccountId}
+                />
+                <View className="my-5 items-center">
+                  <View
+                    className="h-10 w-10 items-center justify-center rounded-full"
+                    style={{ backgroundColor: colors.brand.primary }}
+                  >
+                    <Ionicons name="arrow-down" size={20} color="#0A2940" />
+                  </View>
+                </View>
+                <AccountSelector
+                  label="TO"
+                  accounts={availableDestinations}
+                  selectedId={toAccountId}
+                  onSelect={setToAccountId}
+                />
+              </Card>
+
+              <Card>
+                <AmountField
+                  label="AMOUNT SENT"
+                  currency={fromAccount?.currency ?? "INR"}
+                  value={sourceAmount}
+                  onChange={(value) => {
+                    setSourceAmount(value);
+                    if (sameCurrency) setDestinationAmount(value);
+                  }}
+                />
+                {!sameCurrency && (
+                  <View className="mt-5">
+                    <AmountField
+                      label="AMOUNT RECEIVED"
+                      currency={toAccount?.currency ?? "INR"}
+                      value={destinationAmount}
+                      onChange={setDestinationAmount}
+                    />
+                    <AppText tone="secondary" className="mt-3 text-xs">
+                      Enter the destination amount manually. No exchange rate is
+                      fetched or stored.
+                    </AppText>
+                  </View>
+                )}
+              </Card>
+
+              <DateField value={occurredAt} onChange={setOccurredAt} />
+
+              <View>
+                <AppText
+                  tone="muted"
+                  className="mb-2 text-xs font-bold tracking-widest"
+                >
+                  NOTES · OPTIONAL
+                </AppText>
+                <TextInput
+                  accessibilityLabel="Transfer notes"
+                  value={notes}
+                  onChangeText={setNotes}
+                  multiline
+                  placeholder="What is this transfer for?"
+                  placeholderTextColor={colors.text.muted}
+                  className="min-h-24 rounded-3xl p-5"
+                  style={{
+                    backgroundColor: colors.background.surface,
+                    color: colors.text.primary,
+                    borderWidth: 1,
+                    borderColor: colors.border.soft,
+                    textAlignVertical: "top",
+                  }}
+                />
+              </View>
+            </>
+          )}
+        </ScrollView>
+        {accounts.length >= 2 && (
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingTop: 12,
+              paddingBottom: 8,
+              backgroundColor: colors.background.base,
+              borderTopWidth: 1,
+              borderTopColor: colors.border.soft,
+            }}
+          >
+            <PrimaryButton
+              title="Complete Transfer"
+              onPress={save}
+              disabled={!valid}
+              loading={saving}
+            />
+          </View>
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

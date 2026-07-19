@@ -111,12 +111,24 @@ export function MoneyInput({
   inverse?: boolean;
 }) {
   const { colors } = useAppTheme();
+  const amountFontSize = value.length > 10 ? 40 : value.length > 7 ? 50 : 64;
   return (
-    <View className="my-8 flex-row items-center justify-center gap-4">
+    <View
+      style={{
+        width: "100%",
+        minHeight: 92,
+        marginVertical: 20,
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 14,
+      }}
+    >
       <AppText
         tone={inverse ? "inverse" : "muted"}
         className="text-5xl font-bold"
         style={inverse ? { color: "#AFC4CE" } : undefined}
+        maxFontSizeMultiplier={1.2}
       >
         {currency}
       </AppText>
@@ -127,11 +139,20 @@ export function MoneyInput({
         onChangeText={(v) => onChange(v.replace(/[^0-9.]/g, ""))}
         placeholder="0.00"
         placeholderTextColor={inverse ? "#FFFFFF88" : colors.text.primary}
+        selectionColor={colors.brand.primary}
+        maxLength={15}
         style={{
           color: inverse ? "white" : colors.text.primary,
-          fontSize: 64,
+          flex: 1,
+          minWidth: 0,
+          maxWidth: 260,
+          height: 92,
+          paddingVertical: 0,
+          fontSize: amountFontSize,
+          lineHeight: Math.round(amountFontSize * 1.15),
           fontWeight: "800",
-          minWidth: 210,
+          textAlign: "left",
+          includeFontPadding: false,
         }}
       />
     </View>
@@ -156,6 +177,7 @@ export function Choice({
         onPress();
       }}
       className="items-center gap-2"
+      style={{ width: 84 }}
     >
       <Animated.View
         layout={LinearTransition.duration(180).easing(Easing.out(Easing.cubic))}
@@ -179,8 +201,9 @@ export function Choice({
       </Animated.View>
       <AppText
         tone={selected ? "primary" : "secondary"}
-        className="max-w-20 text-center text-xs font-semibold"
-        numberOfLines={1}
+        className="text-center text-xs font-semibold"
+        style={{ width: 84, minHeight: 32 }}
+        numberOfLines={2}
       >
         {label}
       </AppText>

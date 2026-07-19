@@ -313,7 +313,11 @@ export default function TransactionsScreen() {
         <View>
           <LinearGradient
             colors={isDark ? ["#19384A", "#123025"] : ["#0F253A", "#17613A"]}
-            className="flex-row rounded-3xl p-5"
+            style={{
+              flexDirection: "row",
+              borderRadius: 24,
+              padding: 20,
+            }}
           >
             <Total label="INCOME" value={income} color="#58F492" />
             <Total label="EXPENSE" value={expenses} color="#9EC0FF" />
