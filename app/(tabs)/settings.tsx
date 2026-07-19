@@ -6,12 +6,13 @@ import {
   listTransactions,
   resetLocalData,
 } from "@/db/repository";
+import { useTabBarMetrics } from "@/lib/navigation/tabBar";
+import { useAppLock } from "@/lib/security/AppLockProvider";
 import {
   useAppPreferences,
   useAppTheme,
   type ThemePreference,
 } from "@/lib/theme/useAppTheme";
-import { useAppLock } from "@/lib/security/AppLockProvider";
 import {
   getNotificationPermissionStatus,
   requestNotificationPermission,
@@ -55,10 +56,15 @@ function csvCell(value: unknown) {
 
 export default function Settings() {
   const { colors } = useAppTheme();
+  const { contentBottomPadding } = useTabBarMetrics();
   const { themePreference, setThemePreference, baseCurrency, setBaseCurrency } =
     useAppPreferences();
-  const { enabled: appLockEnabled, methodLabel, enableAppLock, disableAppLock } =
-    useAppLock();
+  const {
+    enabled: appLockEnabled,
+    methodLabel,
+    enableAppLock,
+    disableAppLock,
+  } = useAppLock();
   const router = useRouter();
   const [currencies, setCurrencies] = useState<string[]>([baseCurrency]);
   const [notificationStatus, setNotificationStatus] =
@@ -499,7 +505,11 @@ export default function Settings() {
         style={{ flex: 1 }}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 18, paddingBottom: 36, gap: 22 }}
+        contentContainerStyle={{
+          padding: 18,
+          paddingBottom: contentBottomPadding,
+          gap: 22,
+        }}
       >
         <View>
           <AppText className="text-3xl font-extrabold">Settings</AppText>

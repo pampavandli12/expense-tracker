@@ -8,6 +8,7 @@ import {
   toMinorUnits,
   updateAccount,
 } from "@/db/repository";
+import { useTabBarMetrics } from "@/lib/navigation/tabBar";
 import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -25,6 +26,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 type Row = Awaited<ReturnType<typeof accountBalances>>[number];
 export default function Accounts() {
   const { colors, isDark } = useAppTheme();
+  const { contentBottomPadding } = useTabBarMetrics();
   const { baseCurrency } = useAppPreferences();
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
@@ -48,7 +50,11 @@ export default function Accounts() {
       <ScrollView
         style={{ flex: 1 }}
         contentInsetAdjustmentBehavior="never"
-        contentContainerStyle={{ padding: 18, paddingBottom: 36, gap: 18 }}
+        contentContainerStyle={{
+          padding: 18,
+          paddingBottom: contentBottomPadding,
+          gap: 18,
+        }}
       >
         <View className="flex-row items-center justify-between">
           <View>

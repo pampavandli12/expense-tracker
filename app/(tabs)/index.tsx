@@ -9,6 +9,7 @@ import {
   monthSummary,
 } from "@/db/repository";
 import type { Account } from "@/db/schema";
+import { useTabBarMetrics } from "@/lib/navigation/tabBar";
 import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,6 +23,7 @@ type Summary = Awaited<ReturnType<typeof monthSummary>>;
 type CategoryRow = Awaited<ReturnType<typeof categorySummary>>[number];
 export default function Home() {
   const { colors, isDark } = useAppTheme();
+  const { contentBottomPadding } = useTabBarMetrics();
   const { baseCurrency } = useAppPreferences();
   const router: any = useRouter();
   const [date, setDate] = useState(new Date());
@@ -73,7 +75,11 @@ export default function Home() {
         style={{ flex: 1 }}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 18, paddingBottom: 36, gap: 20 }}
+        contentContainerStyle={{
+          padding: 18,
+          paddingBottom: contentBottomPadding,
+          gap: 20,
+        }}
       >
         <View className="flex-row items-center justify-between">
           <Pressable

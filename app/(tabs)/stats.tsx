@@ -14,6 +14,7 @@ import {
   getChartScale,
   getLineChartLayout,
 } from "@/lib/chartLayout";
+import { useTabBarMetrics } from "@/lib/navigation/tabBar";
 import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -36,6 +37,7 @@ const LineChart: any = GiftedLineChart;
 
 export default function Stats() {
   const { colors, isDark } = useAppTheme();
+  const { contentBottomPadding } = useTabBarMetrics();
   const { baseCurrency } = useAppPreferences();
   const { width } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
@@ -181,7 +183,11 @@ export default function Stats() {
         style={{ flex: 1 }}
         contentInsetAdjustmentBehavior="never"
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ padding: 18, paddingBottom: 36, gap: 18 }}
+        contentContainerStyle={{
+          padding: 18,
+          paddingBottom: contentBottomPadding,
+          gap: 18,
+        }}
       >
         <View className="flex-row items-end justify-between">
           <View>
