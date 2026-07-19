@@ -8,7 +8,7 @@ import {
   saveBudget,
   toMinorUnits,
 } from "@/db/repository";
-import { useAppTheme } from "@/lib/theme/useAppTheme";
+import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import {
   requestNotificationPermission,
   supportsNativeNotifications,
@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function BudgetScreen() {
   const { colors, isDark } = useAppTheme();
+  const { baseCurrency } = useAppPreferences();
   const router = useRouter();
   const month = monthKey(new Date());
   const [amount, setAmount] = useState("");
@@ -29,16 +30,17 @@ export default function BudgetScreen() {
   const [suggestion, setSuggestion] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => {
-    Promise.all([getBudget(month, "INR"), budgetSuggestion(month, "INR")]).then(
-      ([budget, suggested]) => {
-        if (budget) {
-          setAmount(String(budget.amount / 100));
-          setAlerts(budget.alertsEnabled);
-        }
-        setSuggestion(suggested);
-      },
-    );
-  }, [month]);
+    Promise.all([
+      getBudget(month, baseCurrency),
+      budgetSuggestion(month, baseCurrency),
+    ]).then(([budget, suggested]) => {
+      if (budget) {
+        setAmount(String(budget.amount / 100));
+        setAlerts(budget.alertsEnabled);
+      }
+      setSuggestion(suggested);
+    });
+  }, [baseCurrency, month]);
   const save = async () => {
     const value = toMinorUnits(amount);
     if (value <= 0) return;
@@ -53,7 +55,7 @@ export default function BudgetScreen() {
             ? "Budget warnings remain visible in the app."
             : "Native alerts require a development build. Your budget is still tracked in-app.",
         );
-      await saveBudget(month, "INR", value, alerts);
+      await saveBudget(month, baseCurrency, value, alerts);
       router.back();
     } finally {
       setSaving(false);
@@ -92,7 +94,11 @@ export default function BudgetScreen() {
                 SET YOUR MONTHLY LIMIT
               </AppText>
             </View>
-            <MoneyInput value={amount} onChange={setAmount} />
+            <MoneyInput
+              value={amount}
+              onChange={setAmount}
+              currency={baseCurrency === "INR" ? "₹" : baseCurrency}
+            />
           </LinearGradient>
         </View>
         <View>
@@ -117,7 +123,7 @@ export default function BudgetScreen() {
                 </AppText>
                 <AppText className="mt-1 text-lg font-extrabold">
                   {suggestion
-                    ? formatMoney(suggestion)
+                    ? formatMoney(suggestion, baseCurrency)
                     : "Learning your pattern"}
                 </AppText>
               </View>

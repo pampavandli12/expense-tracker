@@ -25,7 +25,11 @@ npx eas build:configure
 
 - `npm run typecheck` — strict TypeScript verification
 - `npm run lint` — Expo ESLint checks
-- `npm test` — finance invariant tests
+- `npm test` — finance, UI primitive, and paywall-state tests
 - `npm run db:generate` — generate Drizzle migration artifacts after schema changes
 
-Budget notifications use the native `expo-notifications` module. JSON export is available from Settings through the platform share sheet.
+Budget notifications use the native `expo-notifications` module. JSON and CSV exports are available from Settings through the platform share sheet.
+
+## Release checkpoint
+
+See [CHECKPOINT.md](./CHECKPOINT.md) for verified checks, physical-device work, store setup, and the intentionally deferred RevenueCat phase. The configured native identifier is currently `com.pampapathi.expensetracker`; confirm it before creating store records because changing it later creates a different application identity.

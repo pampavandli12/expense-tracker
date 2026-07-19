@@ -1,4 +1,3 @@
-import { describe, expect, it } from "vitest";
 import { formatMoney, monthBounds, monthKey, toMinorUnits } from "./finance";
 
 describe("finance primitives", () => {

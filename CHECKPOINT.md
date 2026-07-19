@@ -4,131 +4,97 @@ Checkpoint date: 2026-07-19 (Asia/Kolkata)
 
 ## Current state
 
-The app is a polished functional prototype, approximately **60% toward production readiness**. Core local data entry, reporting, budgets, accounts, navigation, and visual design are working. It is not ready for TestFlight/Play internal testing until the P0 items below are completed.
+The local-first product workflow and release foundation are implemented. The codebase is ready for a signed development-build QA phase, but it is not ready for store submission until physical-device testing, legal/store setup, and the deferred RevenueCat integration are completed.
 
-Current Git state:
+Current Git branch: `codex/production-readiness`.
 
-- Branch: `codex/production-readiness`
-- Base commit: `0c3b060`
-- Implementation is currently uncommitted.
-- Preserve existing changes; review and checkpoint them in Git before the next major feature.
-- The editor swap artifact and unused hardcoded prototype components have been removed.
+## Verified in this checkpoint
 
-Verification at checkpoint:
-
-- `npm run typecheck` — passing
-- `npm run lint` — passing
-- `npm test` — passing, 4 finance primitive tests
-- iOS and Android Metro production exports — passing in the latest verification passes
-- `npm audit` — not completed because the npm registry was unreachable
+- `npm run typecheck` — passing.
+- `npm run lint` — passing.
+- `npm test -- --runInBand` — 4 suites and 13 tests passing.
+- `npx expo install --check` — dependencies compatible with Expo SDK 54.
+- iOS Metro production export — passing.
+- Android Metro production export — passing.
+- Tab route filenames are normalized to lowercase for Linux/EAS compatibility.
+- `npm audit --omit=dev` — 19 moderate findings remain in the Expo SDK 54 transitive toolchain. The offered remediation requires a breaking Expo 57 upgrade and was intentionally not forced into this checkpoint.
+- `npx expo-doctor` — could not complete because it hung without output in the restricted environment. Run it again in a normal networked terminal before producing signed builds.
 
 ## Implemented
 
-- Expo Router application shell with Home, Stats, Accounts, and Settings tabs.
-- Local SQLite database with typed Drizzle schemas and repositories.
-- Integer minor-unit money storage and ISO currency fields.
-- Seeded accounts/categories and database bootstrap.
-- Income and expense entry with category, account, classification, date display, and notes.
-- Monthly budget creation, usage progress, suggestions, and threshold-event deduplication.
-- Home aggregates and category summaries from persisted data.
-- Gifted Charts analytics: expense mix, cash flow, top categories, and spending trend.
-- Account creation and calculated account balances.
-- Transaction history and deletion.
-- JSON export.
-- RevenueCat service boundary and custom paywall UI with development bypass.
-- Expo Go-safe notification fallback and development-build notification path.
-- Unified light/dark color system, polished cards/gradients, haptics, and reduced-motion support.
-- Screen mount animations are disabled to prevent layout flashes; chart and direct-interaction animations remain.
+### Financial data and workflows
 
-## P0 — required before native beta
+- Typed Drizzle schema over persistent Expo SQLite.
+- Generated, bundled, versioned migration with retryable bootstrap failure UI.
+- Idempotent initial migration supports both fresh installs and databases created by the previous bootstrap SQL.
+- WAL, foreign keys, positive-money constraints, ISO currency checks, and transaction boundaries.
+- Integer minor-unit money storage; remaining balance is `income - expense`.
+- Income and expense create/edit/delete with account, category, fixed/variable classification, notes, and past-date selection.
+- Searchable transaction history with month, kind, classification, account, and category filters.
+- Visible edit/delete actions with confirmation.
+- Same-currency and cross-currency transfers with a manually supplied destination amount.
+- Transfer activity affects account balances but is excluded from income/expense reports.
+- Account create/edit/archive, computed balances, detail history, and transfer history.
+- Custom category create/edit/archive while preserving historical records and protecting system categories.
+- Account and currency filters for Home and Stats without combining incompatible currencies.
+- Monthly budget usage, historical suggestion, 80%/100% event deduplication, and notification fallback.
 
-1. **Create a Git checkpoint**
-   - Remove the confirmed swap artifact.
-   - Review `git diff`, stage intentionally, and commit the current working prototype.
-   - Prefer a `codex/production-readiness` or other feature branch before continuing.
+### Product and native foundation
 
-2. **Harden database migrations**
-   - Replace the single bootstrap SQL block with versioned, bundled Drizzle migrations.
-   - Test fresh install and upgrade from at least one older schema.
-   - Add migration failure recovery that never deletes user data.
+- Polished Home, Stats, Accounts, Settings, Budget, Income, Expense, History, Transfer, Category, and account-detail screens.
+- Gifted Charts analytics with filter transitions and accessible empty states.
+- Persisted system/light/dark theme and base-currency preferences.
+- JSON and CSV export through the native share sheet.
+- Local-data reset with confirmation and uninstall data-loss disclosure.
+- Notification permission status and link to device settings.
+- In-app Terms and Privacy content plus environment-driven external paywall links.
+- RevenueCat service boundary and custom hard-paywall states; credentials/products remain deliberately unconfigured.
+- `expo-dev-client` and EAS development, preview, and production profiles.
+- Native-only platform configuration, portrait phone support, notification assets, identifiers, and version codes.
+- Development-only isolated database self-check for migration idempotency, foreign keys, and rollback.
+- Maestro core smoke-flow scaffold and documentation.
 
-3. **Complete essential transaction workflows**
-   - Edit transactions.
-   - Select an actual transaction date instead of always saving today.
-   - Add search and filters to history.
-   - Confirm delete updates budgets, reports, and threshold state correctly.
-   - Add account transfers with atomic source/destination writes.
+## External and device blockers
 
-4. **Build and test native development clients**
-   - Install/configure `expo-dev-client` and EAS profiles.
-   - Validate iOS and Android physical-device builds.
-   - Test SQLite persistence across upgrades, app termination, and device restart.
-   - Test local notification permissions and 80%/100% delivery outside Expo Go.
+These require the owner’s accounts, signing credentials, published URLs, or physical devices:
 
-5. **Increase automated coverage**
-   - Repository integration tests against isolated SQLite.
-   - Tests for month aggregation, mixed currencies, budget calculations, edit/delete, transfers, and rollback.
-   - Component tests for transaction validation, empty states, and paywall states.
-   - At least one automated or documented end-to-end smoke flow per platform.
+1. Confirm that `com.pampapathi.expensetracker` is the permanent iOS bundle identifier and Android application ID.
+2. Create the App Store Connect and Google Play app records.
+3. Run `npx expo-doctor` in a networked terminal.
+4. Produce signed EAS development/preview builds and test on physical iOS and Android devices.
+5. Verify database persistence across termination, restart, and an app upgrade.
+6. Verify native date picker, notification permission states, 80%/100% notifications, export, and share sheet.
+7. Publish Privacy Policy, Terms, and support pages, then configure their real URLs.
+8. Perform accessibility, small-device, Dynamic Type, keyboard, screen-reader, and performance QA.
+9. Resolve the remaining Expo transitive audit findings during a planned SDK upgrade, rather than using `npm audit fix --force` during release hardening.
 
-6. **Resolve release configuration**
-   - Final app name, slug, scheme, icons, splash assets, bundle identifier, Android package, version/build numbers.
-   - EAS `development`, `preview`, and `production` build profiles.
-   - Remove or explicitly exclude web if it is not supported.
-   - Run `npx expo-doctor` and a reachable `npm audit`; review findings without force-upgrading blindly.
+## RevenueCat — intentionally last
 
-## P1 — required before store submission
+- Create monthly and annual products and trial configuration in both stores.
+- Configure the `premium` entitlement and current offering in RevenueCat.
+- Add platform public SDK keys through EAS environment variables.
+- Test purchase, cancellation, retry, renewal, expiration, restore, billing issues, and cached offline entitlement.
+- Verify localized pricing and subscription disclosures.
+- Confirm the development preview bypass cannot appear in preview or production builds.
 
-- Configure RevenueCat projects, entitlement, monthly/annual products, trial, offerings, restore, and sandbox testers.
-- Replace placeholder Terms and Privacy URLs with published documents.
-- Verify the hard paywall against Apple and Google subscription disclosure requirements.
-- Add subscription-management links for both iOS and Android.
-- Remove the development paywall bypass from release builds and verify environment separation.
-- Implement custom category create/edit/archive with safe historical references.
-- Make theme and base-currency settings functional and persisted.
-- Define mixed-currency UX; never combine currencies without an explicit conversion model.
-- Add CSV export and verify share-sheet behavior on both platforms.
-- Add database backup/restore or clearly disclose that uninstalling loses local records.
-- Add user-facing error recovery for failed writes, migrations, exports, and notification permissions.
-- Perform accessibility QA: screen reader, Dynamic Type/font scaling, touch targets, contrast, reduced motion, and keyboard navigation.
-- Perform device-size QA, including small Android screens, iPhone SE-class screens, and tablets or disable tablet support.
-- Profile chart and long-list performance with realistic data volumes.
+## Next work session
 
-## P2 — post-beta improvements
+Start native QA rather than adding more UI:
 
-- Recurring transactions and fixed-expense automation.
-- Account detail/history views and account archival/reassignment UX.
-- Transaction editing animations and richer filtering.
-- Optional biometric app lock and encrypted SQLite assessment.
-- Import/restore workflow.
-- Localization beyond INR/English.
-- Crash reporting and privacy-conscious product analytics, if desired.
-
-## Recommended next session
-
-Start with **transaction correctness before more visual polish**:
-
-1. Generate and integrate bundled, versioned Drizzle migrations.
-2. Implement a reusable transaction form supporting create and edit.
-3. Add a native date picker and persist the selected timestamp.
-4. Add repository integration tests for create/edit/delete and monthly aggregates.
-5. Verify Home, Budget, Stats, Accounts, and History refresh after every mutation.
-
-Acceptance for that session:
-
-- A transaction can be created for a past date, edited, and deleted.
-- All affected month totals and charts update correctly.
-- Data survives app relaunch.
-- TypeScript, lint, unit tests, and a native Metro export pass.
+1. Confirm the permanent application identifier.
+2. Run the development-only database self-check in a development client.
+3. Create signed iOS and Android development builds.
+4. Execute the documented financial smoke flow on both devices.
+5. Record device results and fix any P0/P1 defects before RevenueCat setup.
 
 ## Useful commands
 
 ```bash
 npm run typecheck
 npm run lint
-npm test
+npm test -- --runInBand
 npx expo install --check
 npx expo-doctor
-npx expo start --clear
-git status --short
+npx expo export --platform ios --output-dir .test-build/ios --clear
+npx expo export --platform android --output-dir .test-build/android --clear
 ```

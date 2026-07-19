@@ -3,10 +3,12 @@ import { Card } from "@/components/ui";
 import {
   categorySummary,
   formatMoney,
+  listAccounts,
   monthKey,
   spendingTrend,
 } from "@/db/repository";
-import { useAppTheme } from "@/lib/theme/useAppTheme";
+import type { Account } from "@/db/schema";
+import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -28,26 +30,41 @@ const LineChart: any = GiftedLineChart;
 
 export default function Stats() {
   const { colors, isDark } = useAppTheme();
+  const { baseCurrency } = useAppPreferences();
   const { width } = useWindowDimensions();
   const reducedMotion = useReducedMotion();
   const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountId, setAccountId] = useState("all");
   const [trend, setTrend] = useState<Trend>([]);
   const [period, setPeriod] = useState<Period>(6);
   const [loading, setLoading] = useState(true);
   const [chartRevision, setChartRevision] = useState(0);
   const load = useCallback(() => {
     setLoading(true);
+    const selectedAccountId = accountId === "all" ? undefined : accountId;
     return Promise.all([
-      categorySummary(monthKey(new Date()), "INR"),
-      spendingTrend(new Date(), "INR", period),
+      categorySummary(monthKey(new Date()), baseCurrency, selectedAccountId),
+      spendingTrend(new Date(), baseCurrency, period, selectedAccountId),
+      listAccounts(),
     ])
-      .then(([c, t]) => {
+      .then(([c, t, accountRows]) => {
         setCategories(c);
         setTrend(t);
+        const matchingAccounts = accountRows.filter(
+          (account) => account.currency === baseCurrency,
+        );
+        setAccounts(matchingAccounts);
+        if (
+          accountId !== "all" &&
+          !matchingAccounts.some((account) => account.id === accountId)
+        ) {
+          setAccountId("all");
+        }
         setChartRevision((value) => value + 1);
       })
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [accountId, baseCurrency, period]);
   useFocusEffect(
     useCallback(() => {
       load();
@@ -130,6 +147,28 @@ export default function Stats() {
           </View>
         </View>
 
+        {accounts.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8 }}
+          >
+            <AccountFilterChip
+              label="All accounts"
+              active={accountId === "all"}
+              onPress={() => setAccountId("all")}
+            />
+            {accounts.map((account) => (
+              <AccountFilterChip
+                key={account.id}
+                label={account.name}
+                active={accountId === account.id}
+                onPress={() => setAccountId(account.id)}
+              />
+            ))}
+          </ScrollView>
+        )}
+
         <View>
           <LinearGradient
             colors={
@@ -170,18 +209,20 @@ export default function Stats() {
               className="mt-3 text-4xl font-extrabold"
               style={{ color: "white" }}
             >
-              {formatMoney(net)}
+              {formatMoney(net, baseCurrency)}
             </AppText>
             <View className="mt-6 flex-row gap-4">
               <MiniMetric
                 label="INCOME"
                 value={latest?.income ?? 0}
                 color="#57F292"
+                currency={baseCurrency}
               />
               <MiniMetric
                 label="EXPENSE"
                 value={latest?.expense ?? 0}
                 color="#9EC0FF"
+                currency={baseCurrency}
               />
             </View>
           </LinearGradient>
@@ -254,7 +295,7 @@ export default function Stats() {
                           TOTAL
                         </AppText>
                         <AppText className="mt-1 text-lg font-extrabold">
-                          {formatMoney(total)}
+                          {formatMoney(total, baseCurrency)}
                         </AppText>
                         <AppText tone="muted" className="text-[10px]">
                           this month
@@ -283,7 +324,7 @@ export default function Stats() {
                         </AppText>
                       </View>
                       <AppText tone="muted" className="ml-[18px] mt-1 text-xs">
-                        {formatMoney(item.total)}
+                        {formatMoney(item.total, baseCurrency)}
                       </AppText>
                     </View>
                   ))}
@@ -325,7 +366,9 @@ export default function Stats() {
                     yAxisTextStyle={{ color: colors.text.muted, fontSize: 10 }}
                     noOfSections={4}
                     formatYLabel={(label) =>
-                      `₹${Math.round(Number(label) / 1000)}k`
+                      `${baseCurrency === "INR" ? "₹" : `${baseCurrency} `}${Math.round(
+                        Number(label) / 1000,
+                      )}k`
                     }
                   />
                 </ScrollView>
@@ -379,7 +422,7 @@ export default function Stats() {
                     <View className="flex-row items-center justify-between">
                       <AppText className="font-bold">{item.name}</AppText>
                       <AppText className="font-extrabold">
-                        {formatMoney(item.total)}
+                        {formatMoney(item.total, baseCurrency)}
                       </AppText>
                     </View>
                     <View
@@ -456,6 +499,7 @@ export default function Stats() {
                           >
                             {formatMoney(
                               Math.round((points[0]?.value ?? 0) * 100),
+                              baseCurrency,
                             )}
                           </AppText>
                         </View>
@@ -474,6 +518,33 @@ export default function Stats() {
         </View>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function AccountFilterChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      className="rounded-xl px-4 py-2"
+      style={{
+        backgroundColor: active
+          ? colors.brand.primary
+          : colors.background.surface,
+      }}
+    >
+      <AppText className="text-xs font-bold">{label}</AppText>
+    </Pressable>
   );
 }
 
@@ -533,10 +604,12 @@ function MiniMetric({
   label,
   value,
   color,
+  currency,
 }: {
   label: string;
   value: number;
   color: string;
+  currency: string;
 }) {
   return (
     <View className="flex-1">
@@ -547,7 +620,7 @@ function MiniMetric({
         {label}
       </AppText>
       <AppText className="mt-1 text-lg font-extrabold" style={{ color }}>
-        {formatMoney(value)}
+        {formatMoney(value, currency)}
       </AppText>
     </View>
   );

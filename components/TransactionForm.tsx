@@ -1,7 +1,9 @@
 import AppText from "@/components/AppText";
+import DateField from "@/components/DateField";
 import { Choice, Header, MoneyInput, PrimaryButton } from "@/components/ui";
 import {
   formatMoney,
+  getTransaction,
   listAccounts,
   listCategories,
   saveTransaction,
@@ -19,8 +21,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function TransactionForm({
   kind,
+  transactionId,
 }: {
   kind: "income" | "expense";
+  transactionId?: string;
 }) {
   const { colors, isDark } = useAppTheme();
   const router = useRouter();
@@ -33,15 +37,54 @@ export default function TransactionForm({
   const [expenseType, setExpenseType] = useState<"variable" | "fixed">(
     "variable",
   );
+  const [occurredAt, setOccurredAt] = useState(new Date());
   const [saving, setSaving] = useState(false);
   useEffect(() => {
-    Promise.all([listAccounts(), listCategories(kind)]).then(([a, c]) => {
-      setAccounts(a);
-      setCategories(c);
-      setAccountId(a[0]?.id ?? "");
-      setCategoryId(c[0]?.id ?? "");
-    });
-  }, [kind]);
+    let active = true;
+    Promise.all([
+      listAccounts(),
+      listCategories(kind),
+      transactionId
+        ? getTransaction(transactionId)
+        : Promise.resolve(undefined),
+    ])
+      .then(([activeAccounts, activeCategories, existing]) => {
+        if (!active) return;
+        const availableAccounts =
+          existing &&
+          !activeAccounts.some((item) => item.id === existing.account.id)
+            ? [...activeAccounts, existing.account]
+            : activeAccounts;
+        const availableCategories =
+          existing &&
+          !activeCategories.some((item) => item.id === existing.category.id)
+            ? [...activeCategories, existing.category]
+            : activeCategories;
+        setAccounts(availableAccounts);
+        setCategories(availableCategories);
+        if (existing) {
+          setAmount(String(existing.transaction.amount / 100));
+          setAccountId(existing.transaction.accountId);
+          setCategoryId(existing.transaction.categoryId);
+          setNotes(existing.transaction.notes ?? "");
+          setExpenseType(existing.transaction.expenseType ?? "variable");
+          setOccurredAt(existing.transaction.occurredAt);
+        } else {
+          setAccountId(availableAccounts[0]?.id ?? "");
+          setCategoryId(availableCategories[0]?.id ?? "");
+        }
+      })
+      .catch((reason) =>
+        Alert.alert(
+          "Unable to load transaction",
+          reason instanceof Error ? reason.message : "Please try again.",
+          [{ text: "Go back", onPress: () => router.back() }],
+        ),
+      );
+    return () => {
+      active = false;
+    };
+  }, [kind, router, transactionId]);
   const account = accounts.find((a) => a.id === accountId);
   const minor = toMinorUnits(amount || "0");
   const valid = minor > 0 && !!account && !!categoryId;
@@ -49,16 +92,19 @@ export default function TransactionForm({
     if (!valid || !account) return;
     setSaving(true);
     try {
-      await saveTransaction({
-        kind,
-        amount: minor,
-        accountId,
-        categoryId,
-        currency: account.currency,
-        occurredAt: new Date(),
-        notes: notes.trim(),
-        expenseType,
-      });
+      await saveTransaction(
+        {
+          kind,
+          amount: minor,
+          accountId,
+          categoryId,
+          currency: account.currency,
+          occurredAt,
+          notes: notes.trim(),
+          expenseType,
+        },
+        transactionId,
+      );
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.back();
     } catch (e) {
@@ -75,7 +121,11 @@ export default function TransactionForm({
       className="flex-1"
       style={{ backgroundColor: colors.background.base }}
     >
-      <Header title={kind === "expense" ? "Add Expense" : "Add Income"} />
+      <Header
+        title={`${transactionId ? "Edit" : "Add"} ${
+          kind === "expense" ? "Expense" : "Income"
+        }`}
+      />
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -218,32 +268,7 @@ export default function TransactionForm({
           <AppText className="mb-3 mt-7 text-lg font-extrabold">
             Details
           </AppText>
-          <View
-            className="flex-row items-center rounded-3xl p-5"
-            style={{
-              backgroundColor: colors.background.surface,
-              borderWidth: 1,
-              borderColor: colors.border.soft,
-            }}
-          >
-            <View
-              className="h-10 w-10 items-center justify-center rounded-xl"
-              style={{ backgroundColor: colors.background.subtle }}
-            >
-              <Ionicons
-                name="calendar"
-                size={20}
-                color={colors.brand.primary}
-              />
-            </View>
-            <AppText className="ml-3 font-semibold">
-              Today,{" "}
-              {new Intl.DateTimeFormat("en-IN", {
-                day: "numeric",
-                month: "short",
-              }).format(new Date())}
-            </AppText>
-          </View>
+          <DateField value={occurredAt} onChange={setOccurredAt} />
           <AppText
             tone="secondary"
             className="mb-3 mt-5 text-xs font-bold tracking-widest"
@@ -272,7 +297,9 @@ export default function TransactionForm({
         style={{ backgroundColor: colors.background.base }}
       >
         <PrimaryButton
-          title={`Save ${kind === "expense" ? "Expense" : "Income"}`}
+          title={`${transactionId ? "Update" : "Save"} ${
+            kind === "expense" ? "Expense" : "Income"
+          }`}
           onPress={save}
           disabled={!valid}
           loading={saving}

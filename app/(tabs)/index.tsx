@@ -4,10 +4,12 @@ import {
   categorySummary,
   formatMoney,
   getBudget,
+  listAccounts,
   monthKey,
   monthSummary,
 } from "@/db/repository";
-import { useAppTheme } from "@/lib/theme/useAppTheme";
+import type { Account } from "@/db/schema";
+import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
@@ -20,6 +22,7 @@ type Summary = Awaited<ReturnType<typeof monthSummary>>;
 type CategoryRow = Awaited<ReturnType<typeof categorySummary>>[number];
 export default function Home() {
   const { colors, isDark } = useAppTheme();
+  const { baseCurrency } = useAppPreferences();
   const router: any = useRouter();
   const [date, setDate] = useState(new Date());
   const [summary, setSummary] = useState<Summary>({
@@ -28,20 +31,30 @@ export default function Home() {
     balance: 0,
   });
   const [categoryRows, setCategoryRows] = useState<CategoryRow[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountId, setAccountId] = useState("all");
+  const [budgetSpent, setBudgetSpent] = useState(0);
   const [budget, setBudget] = useState<Awaited<ReturnType<typeof getBudget>>>();
   const key = monthKey(date);
   useFocusEffect(
     useCallback(() => {
+      const selectedAccountId = accountId === "all" ? undefined : accountId;
       Promise.all([
-        monthSummary(key, "INR"),
-        categorySummary(key, "INR"),
-        getBudget(key, "INR"),
-      ]).then(([s, c, b]) => {
+        monthSummary(key, baseCurrency, selectedAccountId),
+        categorySummary(key, baseCurrency, selectedAccountId),
+        getBudget(key, baseCurrency),
+        listAccounts(),
+        monthSummary(key, baseCurrency),
+      ]).then(([s, c, b, accountRows, allAccountsSummary]) => {
         setSummary(s);
         setCategoryRows(c);
         setBudget(b);
+        setAccounts(
+          accountRows.filter((account) => account.currency === baseCurrency),
+        );
+        setBudgetSpent(allAccountsSummary.expense);
       });
-    }, [key]),
+    }, [accountId, baseCurrency, key]),
   );
   const moveMonth = (delta: number) => {
     Haptics.selectionAsync();
@@ -49,9 +62,7 @@ export default function Home() {
       (value) => new Date(value.getFullYear(), value.getMonth() + delta, 1),
     );
   };
-  const percent = budget
-    ? Math.round((summary.expense / budget.amount) * 100)
-    : 0;
+  const percent = budget ? Math.round((budgetSpent / budget.amount) * 100) : 0;
   return (
     <SafeAreaView
       className="flex-1"
@@ -99,6 +110,27 @@ export default function Home() {
             />
           </Pressable>
         </View>
+        {accounts.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8 }}
+          >
+            <AccountFilterChip
+              label="All accounts"
+              active={accountId === "all"}
+              onPress={() => setAccountId("all")}
+            />
+            {accounts.map((account) => (
+              <AccountFilterChip
+                key={account.id}
+                label={account.name}
+                active={accountId === account.id}
+                onPress={() => setAccountId(account.id)}
+              />
+            ))}
+          </ScrollView>
+        )}
         <View>
           <LinearGradient
             colors={
@@ -140,7 +172,7 @@ export default function Home() {
               className="mt-3 text-4xl font-extrabold"
               style={{ color: "white" }}
             >
-              {formatMoney(summary.balance)}
+              {formatMoney(summary.balance, baseCurrency)}
             </AppText>
             <View
               className="mt-7 h-px"
@@ -152,12 +184,14 @@ export default function Home() {
                 value={summary.income}
                 icon="arrow-down"
                 color="#58F492"
+                currency={baseCurrency}
               />
               <BalanceMetric
                 label="EXPENSE"
                 value={summary.expense}
                 icon="arrow-up"
                 color="#9EC0FF"
+                currency={baseCurrency}
               />
             </View>
           </LinearGradient>
@@ -182,10 +216,13 @@ export default function Home() {
             <Card>
               <View className="flex-row items-center justify-between">
                 <AppText className="text-lg font-extrabold">
-                  {formatMoney(summary.expense)}
+                  {formatMoney(budgetSpent, baseCurrency)}
                 </AppText>
                 <AppText tone="secondary" className="text-sm">
-                  of {budget ? formatMoney(budget.amount) : "no limit"}
+                  of{" "}
+                  {budget
+                    ? formatMoney(budget.amount, baseCurrency)
+                    : "no limit"}
                 </AppText>
               </View>
               <View
@@ -291,7 +328,7 @@ export default function Home() {
                       {item.name}
                     </AppText>
                     <AppText className="mt-1 text-base font-extrabold">
-                      {formatMoney(item.total)}
+                      {formatMoney(item.total, baseCurrency)}
                     </AppText>
                   </Card>
                 </Pressable>
@@ -309,16 +346,45 @@ export default function Home() {
     </SafeAreaView>
   );
 }
+
+function AccountFilterChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      className="rounded-xl px-4 py-2"
+      style={{
+        backgroundColor: active
+          ? colors.brand.primary
+          : colors.background.surface,
+      }}
+    >
+      <AppText className="text-xs font-bold">{label}</AppText>
+    </Pressable>
+  );
+}
 function BalanceMetric({
   label,
   value,
   icon,
   color,
+  currency,
 }: {
   label: string;
   value: number;
   icon: any;
   color: string;
+  currency: string;
 }) {
   return (
     <View className="flex-1 flex-row items-center gap-3">
@@ -336,7 +402,7 @@ function BalanceMetric({
           {label}
         </AppText>
         <AppText className="mt-1 text-base font-extrabold" style={{ color }}>
-          {formatMoney(value)}
+          {formatMoney(value, currency)}
         </AppText>
       </View>
     </View>

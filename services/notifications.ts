@@ -11,7 +11,8 @@ let handlerConfigured = false;
  * breaking route registration while preserving alerts in development builds.
  */
 async function getNotifications(): Promise<NotificationsModule | null> {
-  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient) return null;
+  if (Constants.executionEnvironment === ExecutionEnvironment.StoreClient)
+    return null;
   modulePromise ??= import("expo-notifications");
   const Notifications = await modulePromise;
   if (!handlerConfigured) {
@@ -30,6 +31,20 @@ async function getNotifications(): Promise<NotificationsModule | null> {
 
 export function supportsNativeNotifications() {
   return Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+}
+
+export type NotificationPermissionState =
+  | "unavailable"
+  | "granted"
+  | "denied"
+  | "undetermined";
+
+export async function getNotificationPermissionStatus(): Promise<NotificationPermissionState> {
+  const Notifications = await getNotifications();
+  if (!Notifications) return "unavailable";
+  const permission = await Notifications.getPermissionsAsync();
+  if (permission.granted) return "granted";
+  return permission.canAskAgain ? "undetermined" : "denied";
 }
 
 export async function requestNotificationPermission() {
