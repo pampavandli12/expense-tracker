@@ -1,13 +1,599 @@
 import AppText from "@/components/AppText";
-import React from "react";
+import { Card } from "@/components/ui";
+import {
+  categorySummary,
+  formatMoney,
+  monthKey,
+  spendingTrend,
+} from "@/db/repository";
+import { useAppTheme } from "@/lib/theme/useAppTheme";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import { useFocusEffect } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import {
+  BarChart,
+  LineChart as GiftedLineChart,
+  PieChart,
+} from "react-native-gifted-charts";
+import { useReducedMotion } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-function Stats() {
+type CategoryRow = Awaited<ReturnType<typeof categorySummary>>[number];
+type Trend = Awaited<ReturnType<typeof spendingTrend>>;
+type Period = 3 | 6 | 12;
+const LineChart: any = GiftedLineChart;
+
+export default function Stats() {
+  const { colors, isDark } = useAppTheme();
+  const { width } = useWindowDimensions();
+  const reducedMotion = useReducedMotion();
+  const [categories, setCategories] = useState<CategoryRow[]>([]);
+  const [trend, setTrend] = useState<Trend>([]);
+  const [period, setPeriod] = useState<Period>(6);
+  const [loading, setLoading] = useState(true);
+  const [chartRevision, setChartRevision] = useState(0);
+  const load = useCallback(() => {
+    setLoading(true);
+    return Promise.all([
+      categorySummary(monthKey(new Date()), "INR"),
+      spendingTrend(new Date(), "INR", period),
+    ])
+      .then(([c, t]) => {
+        setCategories(c);
+        setTrend(t);
+        setChartRevision((value) => value + 1);
+      })
+      .finally(() => setLoading(false));
+  }, [period]);
+  useFocusEffect(
+    useCallback(() => {
+      load();
+    }, [load]),
+  );
+
+  const total = categories.reduce((sum, item) => sum + item.total, 0);
+  const chartWidth = Math.max(270, width - 94);
+  const latest = trend.at(-1);
+  const net = (latest?.income ?? 0) - (latest?.expense ?? 0);
+  const previousExpense = trend.at(-2)?.expense ?? 0;
+  const expenseChange = previousExpense
+    ? Math.round(
+        (((latest?.expense ?? 0) - previousExpense) / previousExpense) * 100,
+      )
+    : 0;
+  const pieData = useMemo(
+    () =>
+      categories.map((item) => ({
+        value: item.total,
+        color: item.color,
+        gradientCenterColor: `${item.color}CC`,
+        focused: item.id === categories[0]?.id,
+      })),
+    [categories],
+  );
+  const bars = useMemo(
+    () =>
+      trend.flatMap((item) => [
+        {
+          value: item.income / 100,
+          label: item.month,
+          frontColor: colors.brand.primary,
+          gradientColor: "#8CF5B0",
+          spacing: 4,
+          labelTextStyle: { color: colors.text.muted, fontSize: 11 },
+        },
+        {
+          value: item.expense / 100,
+          frontColor: "#7DA7F7",
+          gradientColor: "#C9DAFF",
+          spacing: 17,
+        },
+      ]),
+    [trend, colors],
+  );
+  const line = useMemo(
+    () =>
+      trend.map((item) => ({
+        value: item.expense / 100,
+        label: item.month,
+        labelTextStyle: { color: colors.text.muted, fontSize: 11 },
+        dataPointColor: "#2463EB",
+        dataPointRadius: 4,
+      })),
+    [trend, colors],
+  );
+
   return (
-    <SafeAreaView>
-      <AppText>Stats</AppText>
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: colors.background.base }}
+    >
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: 18, paddingBottom: 120, gap: 18 }}
+      >
+        <View className="flex-row items-end justify-between">
+          <View>
+            <AppText className="text-3xl font-extrabold">Statistics</AppText>
+            <AppText tone="secondary" className="mt-1">
+              A clearer view of your money
+            </AppText>
+          </View>
+          <View
+            className="h-11 w-11 items-center justify-center rounded-2xl"
+            style={{ backgroundColor: colors.brand.primarySoft }}
+          >
+            <Ionicons name="sparkles" size={21} color={colors.brand.primary} />
+          </View>
+        </View>
+
+        <View>
+          <LinearGradient
+            colors={
+              isDark
+                ? ["#19384A", "#123025", "#121C2D"]
+                : ["#0F253A", "#123E37", "#17613A"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{ borderRadius: 24, padding: 22, overflow: "hidden" }}
+          >
+            <View
+              className="absolute -right-8 -top-12 h-40 w-40 rounded-full"
+              style={{ backgroundColor: "#36EE7940" }}
+            />
+            <View className="flex-row items-center justify-between">
+              <AppText
+                className="text-sm font-semibold"
+                style={{ color: "#B7C9D2" }}
+              >
+                NET THIS MONTH
+              </AppText>
+              <View
+                className="rounded-full px-3 py-1"
+                style={{
+                  backgroundColor: net >= 0 ? "#3DF08322" : "#FF6B7522",
+                }}
+              >
+                <AppText
+                  className="text-xs font-bold"
+                  style={{ color: net >= 0 ? "#58F492" : "#FF8990" }}
+                >
+                  {net >= 0 ? "POSITIVE" : "OVERSPENT"}
+                </AppText>
+              </View>
+            </View>
+            <AppText
+              className="mt-3 text-4xl font-extrabold"
+              style={{ color: "white" }}
+            >
+              {formatMoney(net)}
+            </AppText>
+            <View className="mt-6 flex-row gap-4">
+              <MiniMetric
+                label="INCOME"
+                value={latest?.income ?? 0}
+                color="#57F292"
+              />
+              <MiniMetric
+                label="EXPENSE"
+                value={latest?.expense ?? 0}
+                color="#9EC0FF"
+              />
+            </View>
+          </LinearGradient>
+        </View>
+
+        <View>
+          <View
+            className="flex-row rounded-2xl p-1"
+            style={{ backgroundColor: colors.background.subtle }}
+          >
+            {([3, 6, 12] as Period[]).map((value) => (
+              <Pressable
+                key={value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: period === value }}
+                onPress={() => {
+                  if (value === period) return;
+                  Haptics.selectionAsync();
+                  setPeriod(value);
+                }}
+                className="flex-1 rounded-xl py-3"
+                style={{
+                  backgroundColor:
+                    period === value
+                      ? colors.background.surface
+                      : "transparent",
+                  shadowColor: "#0A1730",
+                  shadowOpacity: period === value ? 0.08 : 0,
+                  shadowRadius: 8,
+                }}
+              >
+                <AppText
+                  tone={period === value ? "primary" : "secondary"}
+                  className="text-center text-sm font-bold"
+                >
+                  {value === 12 ? "1 Year" : `${value} Months`}
+                </AppText>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        <View>
+          <ModernCard>
+            <SectionHeader
+              title="Expense mix"
+              subtitle="Where your money went"
+              icon="pie-chart"
+            />
+            {total ? (
+              <View className="mt-3 flex-row items-center">
+                <View className="w-[53%] items-center">
+                  <PieChart
+                    key={`pie-${period}-${chartRevision}`}
+                    data={pieData}
+                    donut
+                    radius={86}
+                    innerRadius={61}
+                    innerCircleColor={colors.background.surface}
+                    showGradient
+                    isAnimated={!reducedMotion}
+                    animationDuration={850}
+                    sectionAutoFocus
+                    centerLabelComponent={() => (
+                      <View className="items-center">
+                        <AppText
+                          tone="muted"
+                          className="text-[10px] font-bold tracking-widest"
+                        >
+                          TOTAL
+                        </AppText>
+                        <AppText className="mt-1 text-lg font-extrabold">
+                          {formatMoney(total)}
+                        </AppText>
+                        <AppText tone="muted" className="text-[10px]">
+                          this month
+                        </AppText>
+                      </View>
+                    )}
+                  />
+                </View>
+                <View className="flex-1 gap-4">
+                  {categories.slice(0, 4).map((item) => (
+                    <View key={item.id}>
+                      <View className="flex-row items-center">
+                        <View
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ backgroundColor: item.color }}
+                        />
+                        <AppText
+                          tone="secondary"
+                          numberOfLines={1}
+                          className="ml-2 flex-1 text-xs font-semibold"
+                        >
+                          {item.name}
+                        </AppText>
+                        <AppText className="text-xs font-bold">
+                          {Math.round((item.total / total) * 100)}%
+                        </AppText>
+                      </View>
+                      <AppText tone="muted" className="ml-[18px] mt-1 text-xs">
+                        {formatMoney(item.total)}
+                      </AppText>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : (
+              <Empty
+                loading={loading}
+                text="Add expenses to reveal your spending mix."
+              />
+            )}
+          </ModernCard>
+        </View>
+
+        <View>
+          <ModernCard>
+            <SectionHeader
+              title="Cash flow"
+              subtitle="Income compared with expenses"
+              icon="bar-chart"
+            />
+            <Legend />
+            <View className="mt-3 overflow-hidden">
+              {trend.some((x) => x.income || x.expense) ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <BarChart
+                    key={`bar-${period}-${chartRevision}`}
+                    data={bars}
+                    width={chartWidth}
+                    height={190}
+                    barWidth={11}
+                    roundedTop
+                    showGradient
+                    isAnimated={!reducedMotion}
+                    animationDuration={650}
+                    hideRules
+                    yAxisThickness={0}
+                    xAxisThickness={0}
+                    yAxisTextStyle={{ color: colors.text.muted, fontSize: 10 }}
+                    noOfSections={4}
+                    formatYLabel={(label) =>
+                      `₹${Math.round(Number(label) / 1000)}k`
+                    }
+                  />
+                </ScrollView>
+              ) : (
+                <Empty
+                  loading={loading}
+                  text="Your cash-flow comparison will appear here."
+                />
+              )}
+            </View>
+          </ModernCard>
+        </View>
+
+        <View>
+          <View className="mb-1 flex-row items-end justify-between">
+            <View>
+              <AppText className="text-xl font-extrabold">Top spending</AppText>
+              <AppText tone="secondary" className="text-sm">
+                Your biggest categories
+              </AppText>
+            </View>
+            <AppText
+              tone={expenseChange > 0 ? "primary" : "success"}
+              className="text-xs font-bold"
+              style={{
+                color:
+                  expenseChange > 0
+                    ? colors.status.expense
+                    : colors.status.income,
+              }}
+            >
+              {expenseChange > 0 ? "↑" : "↓"} {Math.abs(expenseChange)}% vs last
+              month
+            </AppText>
+          </View>
+          {categories.slice(0, 3).map((item) => (
+            <View key={item.id}>
+              <Card className="mb-3">
+                <View className="flex-row items-center">
+                  <View
+                    className="h-12 w-12 items-center justify-center rounded-2xl"
+                    style={{ backgroundColor: `${item.color}18` }}
+                  >
+                    <Ionicons
+                      name={item.icon as any}
+                      size={23}
+                      color={item.color}
+                    />
+                  </View>
+                  <View className="ml-4 flex-1">
+                    <View className="flex-row items-center justify-between">
+                      <AppText className="font-bold">{item.name}</AppText>
+                      <AppText className="font-extrabold">
+                        {formatMoney(item.total)}
+                      </AppText>
+                    </View>
+                    <View
+                      className="mt-3 h-2 overflow-hidden rounded-full"
+                      style={{ backgroundColor: colors.background.subtle }}
+                    >
+                      <View
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${total ? (item.total / total) * 100 : 0}%`,
+                          backgroundColor: item.color,
+                        }}
+                      />
+                    </View>
+                  </View>
+                </View>
+              </Card>
+            </View>
+          ))}
+        </View>
+
+        <View>
+          <ModernCard>
+            <SectionHeader
+              title="Spending rhythm"
+              subtitle="Monthly expense movement"
+              icon="analytics"
+            />
+            {line.some((x) => x.value) ? (
+              <View className="mt-3 overflow-hidden">
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <LineChart
+                    key={`line-${period}-${chartRevision}`}
+                    data={line}
+                    width={chartWidth}
+                    height={205}
+                    curved
+                    area
+                    color="#2463EB"
+                    startFillColor={isDark ? "#2463EB66" : "#BFD3FF"}
+                    endFillColor={colors.background.surface}
+                    startOpacity={0.45}
+                    endOpacity={0.02}
+                    thickness={3}
+                    isAnimated={!reducedMotion}
+                    animateOnDataChange={!reducedMotion}
+                    animationDuration={750}
+                    onDataChangeAnimationDuration={750}
+                    hideRules
+                    yAxisThickness={0}
+                    xAxisThickness={0}
+                    yAxisTextStyle={{ color: colors.text.muted, fontSize: 10 }}
+                    noOfSections={4}
+                    focusEnabled
+                    showStripOnFocus
+                    stripColor="#2463EB33"
+                    showTextOnFocus
+                    showDataPointOnFocus
+                    pointerConfig={{
+                      pointerStripColor: "#2463EB55",
+                      pointerColor: "#2463EB",
+                      radius: 5,
+                      pointerLabelWidth: 90,
+                      pointerLabelHeight: 42,
+                      activatePointersOnLongPress: true,
+                      pointerLabelComponent: (points: any[]) => (
+                        <View
+                          className="rounded-xl px-3 py-2"
+                          style={{ backgroundColor: colors.text.primary }}
+                        >
+                          <AppText
+                            className="text-xs font-bold"
+                            style={{ color: colors.background.surface }}
+                          >
+                            {formatMoney(
+                              Math.round((points[0]?.value ?? 0) * 100),
+                            )}
+                          </AppText>
+                        </View>
+                      ),
+                    }}
+                  />
+                </ScrollView>
+              </View>
+            ) : (
+              <Empty
+                loading={loading}
+                text="Track for a few months to reveal your trend."
+              />
+            )}
+          </ModernCard>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-export default Stats;
+function ModernCard({ children }: { children: React.ReactNode }) {
+  const { colors, isDark } = useAppTheme();
+  return (
+    <View
+      className="rounded-3xl p-5"
+      style={{
+        backgroundColor: colors.background.surface,
+        borderWidth: 1,
+        borderColor: colors.border.soft,
+        shadowColor: "#07152D",
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: isDark ? 0.22 : 0.07,
+        shadowRadius: 20,
+        elevation: 3,
+      }}
+    >
+      {children}
+    </View>
+  );
+}
+function SectionHeader({
+  title,
+  subtitle,
+  icon,
+}: {
+  title: string;
+  subtitle: string;
+  icon: any;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <View className="flex-row items-center">
+      <View
+        className="h-10 w-10 items-center justify-center rounded-xl"
+        style={{ backgroundColor: colors.background.subtle }}
+      >
+        <Ionicons name={icon} size={20} color="#2463EB" />
+      </View>
+      <View className="ml-3 flex-1">
+        <AppText className="text-lg font-extrabold">{title}</AppText>
+        <AppText tone="secondary" className="text-xs">
+          {subtitle}
+        </AppText>
+      </View>
+      <Ionicons
+        name="ellipsis-horizontal"
+        size={20}
+        color={colors.text.muted}
+      />
+    </View>
+  );
+}
+function MiniMetric({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <View className="flex-1">
+      <AppText
+        className="text-[10px] font-bold tracking-widest"
+        style={{ color: "#AFC4CE" }}
+      >
+        {label}
+      </AppText>
+      <AppText className="mt-1 text-lg font-extrabold" style={{ color }}>
+        {formatMoney(value)}
+      </AppText>
+    </View>
+  );
+}
+function Legend() {
+  const { colors } = useAppTheme();
+  return (
+    <View className="mt-4 flex-row gap-5">
+      <View className="flex-row items-center gap-2">
+        <View
+          className="h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: colors.brand.primary }}
+        />
+        <AppText tone="secondary" className="text-xs font-semibold">
+          Income
+        </AppText>
+      </View>
+      <View className="flex-row items-center gap-2">
+        <View
+          className="h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: "#7DA7F7" }}
+        />
+        <AppText tone="secondary" className="text-xs font-semibold">
+          Expenses
+        </AppText>
+      </View>
+    </View>
+  );
+}
+function Empty({ text, loading }: { text: string; loading?: boolean }) {
+  const { colors } = useAppTheme();
+  return (
+    <View className="h-40 items-center justify-center">
+      <View
+        className="mb-3 h-12 w-12 items-center justify-center rounded-2xl"
+        style={{ backgroundColor: colors.background.subtle }}
+      >
+        <Ionicons
+          name={loading ? "hourglass-outline" : "analytics-outline"}
+          size={23}
+          color={colors.text.muted}
+        />
+      </View>
+      <AppText tone="secondary" className="max-w-64 text-center">
+        {loading ? "Preparing your insights…" : text}
+      </AppText>
+    </View>
+  );
+}

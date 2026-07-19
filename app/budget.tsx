@@ -1,0 +1,216 @@
+import AppText from "@/components/AppText";
+import { Card, Header, MoneyInput, PrimaryButton } from "@/components/ui";
+import {
+  budgetSuggestion,
+  formatMoney,
+  getBudget,
+  monthKey,
+  saveBudget,
+  toMinorUnits,
+} from "@/db/repository";
+import { useAppTheme } from "@/lib/theme/useAppTheme";
+import {
+  requestNotificationPermission,
+  supportsNativeNotifications,
+} from "@/services/notifications";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Alert, ScrollView, Switch, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+export default function BudgetScreen() {
+  const { colors, isDark } = useAppTheme();
+  const router = useRouter();
+  const month = monthKey(new Date());
+  const [amount, setAmount] = useState("");
+  const [alerts, setAlerts] = useState(true);
+  const [suggestion, setSuggestion] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    Promise.all([getBudget(month, "INR"), budgetSuggestion(month, "INR")]).then(
+      ([budget, suggested]) => {
+        if (budget) {
+          setAmount(String(budget.amount / 100));
+          setAlerts(budget.alertsEnabled);
+        }
+        setSuggestion(suggested);
+      },
+    );
+  }, [month]);
+  const save = async () => {
+    const value = toMinorUnits(amount);
+    if (value <= 0) return;
+    setSaving(true);
+    try {
+      if (alerts && !(await requestNotificationPermission()))
+        Alert.alert(
+          supportsNativeNotifications()
+            ? "Notifications are off"
+            : "Expo Go limitation",
+          supportsNativeNotifications()
+            ? "Budget warnings remain visible in the app."
+            : "Native alerts require a development build. Your budget is still tracked in-app.",
+        );
+      await saveBudget(month, "INR", value, alerts);
+      router.back();
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: colors.background.base }}
+    >
+      <Header title="Monthly Budget" />
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: 20, paddingBottom: 130 }}
+      >
+        <View>
+          <LinearGradient
+            colors={isDark ? ["#172B40", "#16362E"] : ["#EAFFF2", "#F7FBF8"]}
+            style={{
+              borderRadius: 26,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: colors.border.soft,
+            }}
+          >
+            <View className="flex-row items-center justify-center gap-2">
+              <Ionicons
+                name="shield-checkmark"
+                size={18}
+                color={colors.brand.primary}
+              />
+              <AppText
+                tone="secondary"
+                className="text-xs font-bold tracking-widest"
+              >
+                SET YOUR MONTHLY LIMIT
+              </AppText>
+            </View>
+            <MoneyInput value={amount} onChange={setAmount} />
+          </LinearGradient>
+        </View>
+        <View>
+          <Card className="mt-6">
+            <View className="flex-row items-center">
+              <View
+                className="h-12 w-12 items-center justify-center rounded-2xl"
+                style={{ backgroundColor: colors.brand.primarySoft }}
+              >
+                <Ionicons
+                  name="sparkles"
+                  size={23}
+                  color={colors.brand.primary}
+                />
+              </View>
+              <View className="ml-4 flex-1">
+                <AppText
+                  tone="secondary"
+                  className="text-xs font-bold tracking-widest"
+                >
+                  SMART SUGGESTION
+                </AppText>
+                <AppText className="mt-1 text-lg font-extrabold">
+                  {suggestion
+                    ? formatMoney(suggestion)
+                    : "Learning your pattern"}
+                </AppText>
+              </View>
+            </View>
+            <AppText tone="secondary" className="mt-4 text-sm">
+              {suggestion
+                ? "Calculated from your last three complete months."
+                : "Track three complete months to receive a personalised recommendation."}
+            </AppText>
+          </Card>
+        </View>
+        <View className="mt-8">
+          <AppText className="text-xl font-extrabold">Stay informed</AppText>
+          <AppText tone="secondary" className="text-sm">
+            Gentle nudges before you cross the line
+          </AppText>
+          <Card className="mt-4">
+            <View className="flex-row items-center">
+              <View
+                className="h-12 w-12 items-center justify-center rounded-2xl"
+                style={{ backgroundColor: colors.background.subtle }}
+              >
+                <Ionicons
+                  name="notifications"
+                  size={23}
+                  color={colors.brand.primary}
+                />
+              </View>
+              <View className="ml-4 flex-1">
+                <AppText className="font-extrabold">Budget alerts</AppText>
+                <AppText tone="secondary" className="mt-1 text-xs">
+                  At 80% and 100% usage
+                </AppText>
+              </View>
+              <Switch
+                value={alerts}
+                onValueChange={setAlerts}
+                trackColor={{
+                  false: colors.background.subtle,
+                  true: colors.brand.primary,
+                }}
+              />
+            </View>
+            <View
+              className="my-5 h-px"
+              style={{ backgroundColor: colors.border.soft }}
+            />
+            <View className="flex-row gap-3">
+              <Milestone value="80%" label="Heads-up" color="#F0A33A" />
+              <Milestone
+                value="100%"
+                label="Limit reached"
+                color={colors.status.expense}
+              />
+            </View>
+          </Card>
+        </View>
+      </ScrollView>
+      <View
+        className="absolute bottom-0 left-0 right-0 p-5"
+        style={{ backgroundColor: colors.background.base }}
+      >
+        <PrimaryButton
+          title="Save Budget"
+          onPress={save}
+          disabled={toMinorUnits(amount) <= 0}
+          loading={saving}
+        />
+      </View>
+    </SafeAreaView>
+  );
+}
+function Milestone({
+  value,
+  label,
+  color,
+}: {
+  value: string;
+  label: string;
+  color: string;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <View
+      className="flex-1 rounded-2xl p-4"
+      style={{ backgroundColor: colors.background.subtle }}
+    >
+      <AppText className="text-xl font-extrabold" style={{ color }}>
+        {value}
+      </AppText>
+      <AppText tone="secondary" className="mt-1 text-xs">
+        {label}
+      </AppText>
+    </View>
+  );
+}

@@ -15,7 +15,7 @@ export default function RootLayout() {
         tabBarStyle: {
           backgroundColor: colors.background.surface,
           borderTopColor: colors.border.default,
-          height: 70,
+          height: 76,
           paddingTop: 8,
           paddingBottom: 10,
         },
@@ -40,7 +40,7 @@ export default function RootLayout() {
         }}
       />
       <Tabs.Screen
-        name="Stats"
+        name="stats"
         options={{
           title: "Stats",
           tabBarIcon(props) {
@@ -51,22 +51,16 @@ export default function RootLayout() {
         }}
       />
       <Tabs.Screen
-        name="Accounts"
+        name="accounts"
         options={{
           title: "Accounts",
           tabBarIcon(props) {
-            return (
-              <Ionicons
-                name="add-circle-outline"
-                size={24}
-                color={props.color}
-              />
-            );
+            return <Ionicons name="wallet" size={24} color={props.color} />;
           },
         }}
       />
       <Tabs.Screen
-        name="Settings"
+        name="settings"
         options={{
           title: "Settings",
           tabBarIcon(props) {
