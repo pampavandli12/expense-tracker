@@ -12,7 +12,7 @@ Current Git branch: `codex/production-readiness`.
 
 - `npm run typecheck` — passing.
 - `npm run lint` — passing.
-- `npm test -- --runInBand` — 4 suites and 13 tests passing.
+- `npm test -- --runInBand` — 6 suites and 19 tests passing.
 - `npx expo install --check` — dependencies compatible with Expo SDK 54.
 - iOS Metro production export — passing.
 - Android Metro production export — passing.
@@ -47,6 +47,7 @@ Current Git branch: `codex/production-readiness`.
 - JSON and CSV export through the native share sheet.
 - Local-data reset with confirmation and uninstall data-loss disclosure.
 - Notification permission status and link to device settings.
+- Opt-in biometric app lock with protected enable/disable, foreground re-authentication, device-credential fallback, and an opaque privacy screen.
 - In-app Terms and Privacy content plus environment-driven external paywall links.
 - RevenueCat service boundary and custom hard-paywall states; credentials/products remain deliberately unconfigured.
 - `expo-dev-client` and EAS development, preview, and production profiles.
@@ -58,12 +59,12 @@ Current Git branch: `codex/production-readiness`.
 
 These require the owner’s accounts, signing credentials, published URLs, or physical devices:
 
-1. Confirm that `com.pampapathi.expensetracker` is the permanent iOS bundle identifier and Android application ID.
+1. Replace the temporary identifier with the final company-owned iOS bundle identifier and Android application ID after owner approval.
 2. Create the App Store Connect and Google Play app records.
 3. Run `npx expo-doctor` in a networked terminal.
 4. Produce signed EAS development/preview builds and test on physical iOS and Android devices.
 5. Verify database persistence across termination, restart, and an app upgrade.
-6. Verify native date picker, notification permission states, 80%/100% notifications, export, and share sheet.
+6. Verify native date picker, biometric app lock, notification permission states, 80%/100% notifications, export, and share sheet.
 7. Publish Privacy Policy, Terms, and support pages, then configure their real URLs.
 8. Perform accessibility, small-device, Dynamic Type, keyboard, screen-reader, and performance QA.
 9. Resolve the remaining Expo transitive audit findings during a planned SDK upgrade, rather than using `npm audit fix --force` during release hardening.

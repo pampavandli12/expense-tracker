@@ -16,6 +16,7 @@ A privacy-first, local-only expense tracker for iOS and Android. Financial recor
 - Gifted Charts statistics for expense distribution, cash flow, ranked categories, and trends.
 - Custom category management.
 - Persisted system/light/dark appearance and base currency.
+- Opt-in biometric app lock with Face ID/Touch ID on iOS, fingerprint/face authentication on Android, and device-passcode fallback.
 - JSON and CSV export through the native share sheet.
 - Local data reset and clear on-device data-loss disclosure.
 - Custom RevenueCat purchase/restore UI, ready for final store configuration.
@@ -29,7 +30,7 @@ A privacy-first, local-only expense tracker for iOS and Android. Financial recor
 - React Native Reanimated for direct-interaction and chart motion.
 - React Native Gifted Charts.
 - RevenueCat `react-native-purchases`.
-- Expo Notifications, File System, Sharing, Haptics, and Linear Gradient.
+- Expo Local Authentication, Notifications, File System, Sharing, Haptics, and Linear Gradient.
 - Jest Expo and React Native Testing Library.
 - Maestro smoke-flow scaffold.
 
@@ -42,7 +43,7 @@ A privacy-first, local-only expense tracker for iOS and Android. Financial recor
 - Incompatible currencies are never aggregated.
 - Transfers affect account balances but are excluded from income/expense reporting.
 - Archived accounts and categories retain their historical records.
-- There is no authentication, cloud sync, bank connection, receipt scanning, exchange-rate lookup, import, or cloud backup in v1.
+- There is no user account/login, cloud sync, bank connection, receipt scanning, exchange-rate lookup, import, or cloud backup in v1.
 - Uninstalling the application removes the local SQLite database. Export important data before uninstalling or clearing app storage.
 
 ## Repository structure
@@ -139,6 +140,7 @@ Expo Go limitations for this project:
 
 - It cannot perform real App Store or Play Store purchases.
 - Android native notification behavior cannot be fully tested in Expo Go.
+- iOS Face ID cannot be tested in Expo Go; use a development build. Touch ID and Android biometric behavior may be exercised in Expo Go, but release acceptance still requires native builds.
 - The native date-picker path is replaced by the app's Expo Go-safe fallback.
 - Native-module behavior must be verified in a development build before release.
 
@@ -146,7 +148,7 @@ If the terminal says `No development build ... is installed`, Expo was started i
 
 ## Development builds on actual devices
 
-A development build is a custom native app containing this project's native modules. It connects to Metro like Expo Go, but it can test RevenueCat, native notifications, and the native date picker.
+A development build is a custom native app containing this project's native modules. It connects to Metro like Expo Go, but it can test RevenueCat, native notifications, Face ID, and the native date picker.
 
 ### Important identifier checkpoint
 
@@ -428,6 +430,19 @@ Check platform SDK key, current offering, package-to-product attachment, entitle
 
 Android Expo Go does not provide the native notification behavior required here. Use a development build, grant permission in system settings, and verify the `budget` notification channel.
 
+### Face ID or biometric app lock is unavailable
+
+Set up Face ID, Touch ID, fingerprint, or supported face authentication in the device's system settings first. iOS Face ID requires a rebuilt development client because its permission message is a native configuration value; it does not work inside Expo Go.
+
+After installing a compatible build, open **Settings → Security → App lock**. Enabling and disabling the lock both require successful system authentication. The lock is shown whenever the app leaves the active foreground, and the operating-system device credential remains available as a recovery fallback.
+
+After adding or changing `expo-local-authentication` configuration, rebuild the development client:
+
+```bash
+npx eas-cli@latest build --platform android --profile development
+npx eas-cli@latest build --platform ios --profile development
+```
+
 ### Database initialization fails
 
 Use the retry action. Do not clear storage or reinstall until the database file has been exported/backed up and the migration failure is understood.
@@ -444,6 +459,8 @@ Use `npx expo install <package>` for Expo-managed native dependencies. Do not us
 ## Privacy and security
 
 - Financial data stays in local SQLite.
+- Biometric templates and device passcodes are never read or stored by the app; authentication is performed by the iOS/Android system prompt.
+- App lock prevents casual access and obscures financial screens when the app leaves the foreground. It does not encrypt the SQLite database or replace device-level encryption and screen-lock security.
 - The app currently has no analytics or crash-reporting SDK.
 - Adding telemetry requires an explicit privacy review and updated disclosures.
 - Published Privacy Policy and Terms URLs are mandatory before release.
@@ -461,6 +478,7 @@ Use `npx expo install <package>` for Expo-managed native dependencies. Do not us
 - [Submit to the Apple App Store](https://docs.expo.dev/submit/ios/)
 - [RevenueCat with Expo](https://www.revenuecat.com/docs/getting-started/installation/expo)
 - [Expo SQLite](https://docs.expo.dev/versions/v54.0.0/sdk/sqlite/)
+- [Expo Local Authentication](https://docs.expo.dev/versions/v54.0.0/sdk/local-authentication/)
 - [Drizzle Expo SQLite integration](https://orm.drizzle.team/docs/connect-expo-sqlite)
 
 ## License

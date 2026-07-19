@@ -11,6 +11,7 @@ import {
   useAppTheme,
   type ThemePreference,
 } from "@/lib/theme/useAppTheme";
+import { useAppLock } from "@/lib/security/AppLockProvider";
 import {
   getNotificationPermissionStatus,
   requestNotificationPermission,
@@ -56,6 +57,8 @@ export default function Settings() {
   const { colors } = useAppTheme();
   const { themePreference, setThemePreference, baseCurrency, setBaseCurrency } =
     useAppPreferences();
+  const { enabled: appLockEnabled, methodLabel, enableAppLock, disableAppLock } =
+    useAppLock();
   const router = useRouter();
   const [currencies, setCurrencies] = useState<string[]>([baseCurrency]);
   const [notificationStatus, setNotificationStatus] =
@@ -227,6 +230,56 @@ export default function Settings() {
     refreshStatus();
   };
 
+  const showAppLockFailure = (message: string, error: string) => {
+    if (
+      error === "user_cancel" ||
+      error === "app_cancel" ||
+      error === "system_cancel"
+    ) {
+      return;
+    }
+    const canOpenSettings =
+      error === "not_enrolled" ||
+      error === "not_available" ||
+      error === "passcode_not_set";
+    Alert.alert(
+      "App lock wasn't changed",
+      message,
+      canOpenSettings
+        ? [
+            { text: "Cancel", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() },
+          ]
+        : [{ text: "OK" }],
+    );
+  };
+
+  const configureAppLock = () => {
+    if (!appLockEnabled) {
+      void enableAppLock().then((result) => {
+        if (!result.success) showAppLockFailure(result.message, result.error);
+      });
+      return;
+    }
+
+    Alert.alert(
+      "Turn off app lock?",
+      "Authentication is required before the lock can be disabled.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Turn off",
+          style: "destructive",
+          onPress: () =>
+            void disableAppLock().then((result) => {
+              if (!result.success)
+                showAppLockFailure(result.message, result.error);
+            }),
+        },
+      ],
+    );
+  };
+
   const restore = async () => {
     try {
       if (!(await configurePurchases())) {
@@ -347,6 +400,17 @@ export default function Settings() {
           value: "Permanent",
           danger: true,
           onPress: confirmReset,
+        },
+      ],
+    },
+    {
+      title: "Security",
+      rows: [
+        {
+          icon: "finger-print",
+          title: "App lock",
+          value: appLockEnabled ? `On · ${methodLabel}` : "Off",
+          onPress: configureAppLock,
         },
       ],
     },

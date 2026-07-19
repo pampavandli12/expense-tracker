@@ -17,6 +17,7 @@ Use this as a release gate. Do not submit merely because a production binary bui
 - [x] Versioned, bundled migration foundation.
 - [x] Income, expense, account, transfer, budget, history, category, Stats, Settings, and export workflows implemented.
 - [x] RevenueCat boundary and hard-paywall UI implemented.
+- [x] Opt-in system biometric app-lock flow implemented for iOS and Android.
 - [x] EAS development, preview, and production profiles added.
 - [x] TypeScript, lint, Jest, Expo dependency compatibility, and Android/iOS Metro exports passed at the latest checkpoint.
 - [ ] Signed native development builds completed and tested.
@@ -197,6 +198,13 @@ Test at least one representative physical device per platform plus small-screen 
 - [ ] CSV export opens correctly in a spreadsheet application.
 - [ ] Share sheet cancel/success/error paths work.
 - [ ] Theme and base currency persist after relaunch.
+- [ ] App lock enables only after successful authentication on Android.
+- [ ] App lock enables only after successful Face ID/Touch ID authentication on iOS.
+- [ ] Cancelling enable/disable authentication leaves the previous setting unchanged.
+- [ ] App content is obscured and requires authentication after backgrounding, app switching, Control Center/notification shade interruption, and relaunch.
+- [ ] Device credential fallback works after biometric failure or temporary lockout.
+- [ ] Removing enrolled biometrics produces recovery guidance and does not expose app content.
+- [ ] App lock UI and system prompts work in light/dark modes with TalkBack and VoiceOver.
 - [ ] Onboarding state persists.
 - [ ] Month/account/currency filters persist or reset according to the intended UX.
 - [ ] Deep links/URL scheme do not expose unintended routes.
@@ -258,6 +266,11 @@ npx expo export --platform ios --output-dir .test-build/ios --clear
 ## P0 — security and privacy review
 
 - [ ] Confirm `.env.local` and all credential files are absent from Git history.
+- [ ] Confirm iOS Face ID usage text is present in the signed binary and matches the approved privacy copy.
+- [ ] Confirm the app never receives, stores, logs, or claims access to biometric templates.
+- [ ] Confirm app-lock preference persists across relaunch and is not silently disabled by financial-data reset.
+- [ ] Confirm the app-switcher snapshot is covered by the opaque lock surface on both platforms.
+- [ ] Document that app lock is an access-control convenience and does not encrypt the SQLite database at rest.
 - [ ] Confirm no private Apple/Google/Expo/RevenueCat credentials are embedded.
 - [ ] Confirm `EXPO_PUBLIC_` values contain only client-readable configuration.
 - [ ] Confirm SQLite queries remain parameterized and service validation is enforced.

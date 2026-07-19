@@ -6,6 +6,7 @@ import { initializeDatabase } from "@/db/client";
 import AppText from "@/components/AppText";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
+import { AppLockProvider } from "@/lib/security/AppLockProvider";
 
 export default function RootLayout() {
   return (
@@ -71,7 +72,9 @@ function RootNavigator() {
   return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
-      <Stack screenOptions={{ headerShown: false }} />
+      <AppLockProvider>
+        <Stack screenOptions={{ headerShown: false }} />
+      </AppLockProvider>
     </>
   );
 }
