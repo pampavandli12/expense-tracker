@@ -16,6 +16,8 @@ The database is created and seeded on first launch. Money is stored as integer m
 
 RevenueCat purchases require an Expo development build; Expo Go is suitable for most UI and database work but not real store testing. Configure the public platform SDK keys, the `premium` entitlement (or override its ID), and an offering containing monthly and annual packages. Development builds without RevenueCat keys show a development-only preview action on the paywall.
 
+`npm start`, `npm run android`, and `npm run ios` explicitly use Expo Go. After installing a signed development client, use `npm run start:dev-client`, `npm run android:dev-client`, or `npm run ios:dev-client` for native-module testing.
+
 ```bash
 npx expo install expo-dev-client
 npx eas build:configure
