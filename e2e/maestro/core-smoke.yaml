@@ -1,0 +1,46 @@
+appId: com.pampapathi.expensetracker
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Know where your money goes."
+- tapOn: "Get Started"
+- extendedWaitUntil:
+    visible: "Continue in development preview"
+    timeout: 15000
+- tapOn: "Continue in development preview"
+- assertVisible: "OVERVIEW"
+
+- tapOn: "Accounts"
+- tapOn: "Add account"
+- tapOn: "Account name"
+- inputText: "Bank"
+- tapOn: "Opening balance"
+- inputText: "10000"
+- tapOn: "Create Account"
+- assertVisible: "Bank"
+
+- tapOn: "Home"
+- tapOn: "Add income"
+- tapOn: "Amount"
+- inputText: "2000"
+- tapOn: "Save Income"
+- assertVisible: "OVERVIEW"
+
+- tapOn: "Add expense"
+- tapOn: "Amount"
+- inputText: "500"
+- tapOn: "Save Expense"
+- assertVisible: "OVERVIEW"
+
+- tapOn: "VIEW STATS"
+- assertVisible: "Statistics"
+- assertVisible: "NET THIS MONTH"
+
+- tapOn: "Accounts"
+- tapOn: "Transfer money"
+- assertVisible: "Transfer Money"
+- back
+
+- tapOn: "Settings"
+- assertVisible: "Export local data"
+- assertVisible: "Categories"

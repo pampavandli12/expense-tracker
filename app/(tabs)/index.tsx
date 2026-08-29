@@ -1,101 +1,538 @@
-import ActionLogButton from "@/components/ActionLogButton";
 import AppText from "@/components/AppText";
-import BudgetViewCard from "@/components/BudgetViewCard";
-import CategorySummary from "@/components/CategorySummary";
-import IncomeExpenseCard from "@/components/IncomeExpenseCard";
-import Screen from "@/components/Screen";
-import { useAppTheme } from "@/lib/theme/useAppTheme";
+import { ContentReveal } from "@/components/ContentReveal";
+import { Card } from "@/components/ui";
+import {
+  categorySummary,
+  formatMoney,
+  getBudget,
+  listAccounts,
+  monthKey,
+  monthSummary,
+} from "@/db/repository";
+import type { Account } from "@/db/schema";
+import { useTabBarMetrics } from "@/lib/navigation/tabBar";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
+import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import React, { useState } from "react";
-import { Pressable, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { Pressable, ScrollView, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-function Home() {
-  const { colors } = useAppTheme();
-  const insets = useSafeAreaInsets();
-  const tabBarHeight = useBottomTabBarHeight();
-  const [isTransactionsModalOpen, setIsTransactionsModalOpen] = useState(false);
-  const handleNextMonth = () => {
-    // Logic to navigate to the next month
+type Summary = Awaited<ReturnType<typeof monthSummary>>;
+type CategoryRow = Awaited<ReturnType<typeof categorySummary>>[number];
+export default function Home() {
+  const { colors, isDark } = useAppTheme();
+  const { contentBottomPadding } = useTabBarMetrics();
+  const { baseCurrency } = useAppPreferences();
+  const router: any = useRouter();
+  const { canUse, openPaywall } = useSubscription();
+  const [date, setDate] = useState(new Date());
+  const [summary, setSummary] = useState<Summary>({
+    income: 0,
+    expense: 0,
+    balance: 0,
+  });
+  const [categoryRows, setCategoryRows] = useState<CategoryRow[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountId, setAccountId] = useState("all");
+  const [budgetSpent, setBudgetSpent] = useState(0);
+  const [budget, setBudget] = useState<Awaited<ReturnType<typeof getBudget>>>();
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const key = monthKey(date);
+  useFocusEffect(
+    useCallback(() => {
+      const selectedAccountId = accountId === "all" ? undefined : accountId;
+      Promise.all([
+        monthSummary(key, baseCurrency, selectedAccountId),
+        categorySummary(key, baseCurrency, selectedAccountId),
+        getBudget(key, baseCurrency),
+        listAccounts(),
+        monthSummary(key, baseCurrency),
+      ]).then(([s, c, b, accountRows, allAccountsSummary]) => {
+        setSummary(s);
+        setCategoryRows(c);
+        setBudget(b);
+        setAccounts(
+          accountRows.filter((account) => account.currency === baseCurrency),
+        );
+        setBudgetSpent(allAccountsSummary.expense);
+        setHasLoaded(true);
+      });
+    }, [accountId, baseCurrency, key]),
+  );
+  const moveMonth = (delta: number) => {
+    Haptics.selectionAsync();
+    setDate(
+      (value) => new Date(value.getFullYear(), value.getMonth() + delta, 1),
+    );
   };
-  const handlePreviousMonth = () => {
-    // Logic to navigate to the previous month
+  const percent = budget ? Math.round((budgetSpent / budget.amount) * 100) : 0;
+  const openBudget = () => {
+    if (!budget && !canUse("budgets")) {
+      openPaywall("budget");
+      return;
+    }
+    router.push("/budget");
   };
   return (
-    <Screen scroll className="px-4">
-      {/* Month Selector */}
-      <View className="flex-row items-center justify-between mb-6">
-        <Pressable
-          onPress={handlePreviousMonth}
-          className="w-10 h-10 rounded-lg items-center justify-center active:opacity-70"
-          style={{ backgroundColor: colors.background.surface }}
-        >
-          <Ionicons name="chevron-back" size={20} color={colors.icon.muted} />
-        </Pressable>
-
-        <View className="flex-1 items-center">
-          <AppText className="text-lg font-bold">September 2024</AppText>
-        </View>
-
-        <Pressable
-          onPress={handleNextMonth}
-          className="w-10 h-10 rounded-lg items-center justify-center active:opacity-70"
-          style={{ backgroundColor: colors.background.surface }}
-        >
-          <Ionicons
-            name="chevron-forward"
-            size={20}
-            color={colors.icon.muted}
-          />
-        </Pressable>
-      </View>
-
-      {/* Status card */}
-      <View
-        className="rounded-lg p-6"
-        style={{
-          backgroundColor: colors.background.surface,
-          borderColor: colors.border.default,
-          borderWidth: 1,
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      className="flex-1"
+      style={{ backgroundColor: colors.background.base }}
+    >
+      <ScrollView
+        style={{ flex: 1 }}
+        contentInsetAdjustmentBehavior="never"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          padding: 18,
+          paddingBottom: contentBottomPadding,
+          gap: 20,
         }}
       >
-        <AppText tone="secondary" className="text-sm">
-          Remain balance
-        </AppText>
-        <AppText className="text-3xl font-bold mt-2">₹ 12,345</AppText>
-        <View className="flex-row gap-4 mt-10">
-          <IncomeExpenseCard
-            title="INCOME"
-            amount="12000"
-            iconName="arrow-down"
+        <ContentReveal
+          distance={8}
+          duration={200}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Pressable
+            onPress={() => moveMonth(-1)}
+            className="h-11 w-11 items-center justify-center rounded-2xl"
+            style={{ backgroundColor: colors.background.surface }}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={22}
+              color={colors.text.secondary}
+            />
+          </Pressable>
+          <View className="items-center">
+            <AppText
+              tone="muted"
+              className="text-[10px] font-bold tracking-widest"
+            >
+              OVERVIEW
+            </AppText>
+            <AppText className="text-xl font-extrabold">
+              {new Intl.DateTimeFormat("en-IN", {
+                month: "long",
+                year: "numeric",
+              }).format(date)}
+            </AppText>
+          </View>
+          <Pressable
+            onPress={() => moveMonth(1)}
+            className="h-11 w-11 items-center justify-center rounded-2xl"
+            style={{ backgroundColor: colors.background.surface }}
+          >
+            <Ionicons
+              name="chevron-forward"
+              size={22}
+              color={colors.text.secondary}
+            />
+          </Pressable>
+        </ContentReveal>
+        {accounts.length > 1 && (
+          <ContentReveal delay={35} distance={8} ready={hasLoaded}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              <AccountFilterChip
+                label="All accounts"
+                active={accountId === "all"}
+                onPress={() => setAccountId("all")}
+              />
+              {accounts.map((account) => (
+                <AccountFilterChip
+                  key={account.id}
+                  label={account.name}
+                  active={accountId === account.id}
+                  onPress={() => setAccountId(account.id)}
+                />
+              ))}
+            </ScrollView>
+          </ContentReveal>
+        )}
+        <ContentReveal delay={55} distance={12} ready={hasLoaded}>
+          <LinearGradient
+            colors={
+              isDark
+                ? ["#19384A", "#123025", "#121C2D"]
+                : ["#0F253A", "#123E37", "#17613A"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={{
+              borderRadius: 26,
+              padding: 24,
+              overflow: "hidden",
+              shadowColor: "#0A412A",
+              shadowOpacity: 0.2,
+              shadowRadius: 18,
+              shadowOffset: { width: 0, height: 10 },
+            }}
+          >
+            <View
+              className="absolute -right-10 -top-12 h-44 w-44 rounded-full"
+              style={{ backgroundColor: "#3DF08328" }}
+            />
+            <View className="flex-row items-center justify-between">
+              <AppText
+                className="text-sm font-bold tracking-wider"
+                style={{ color: "#B7C9D2" }}
+              >
+                REMAINING BALANCE
+              </AppText>
+              <View
+                className="h-9 w-9 items-center justify-center rounded-xl"
+                style={{ backgroundColor: "#FFFFFF14" }}
+              >
+                <Ionicons name="wallet" size={18} color="#58F492" />
+              </View>
+            </View>
+            <AppText
+              className="mt-3 text-4xl font-extrabold"
+              style={{ color: "white" }}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.68}
+            >
+              {formatMoney(summary.balance, baseCurrency)}
+            </AppText>
+            <View
+              className="mt-7 h-px"
+              style={{ backgroundColor: "#FFFFFF18" }}
+            />
+            <View className="mt-6 flex-row">
+              <BalanceMetric
+                label="INCOME"
+                value={summary.income}
+                icon="arrow-down"
+                color="#58F492"
+                currency={baseCurrency}
+              />
+              <BalanceMetric
+                label="EXPENSE"
+                value={summary.expense}
+                icon="arrow-up"
+                color="#9EC0FF"
+                currency={baseCurrency}
+              />
+            </View>
+          </LinearGradient>
+        </ContentReveal>
+        <ContentReveal delay={90} distance={10} ready={hasLoaded}>
+          <View className="flex-row items-end justify-between">
+            <View>
+              <AppText className="text-xl font-extrabold">
+                Monthly budget
+              </AppText>
+              <AppText tone="secondary" className="text-sm">
+                Stay ahead of your spending
+              </AppText>
+            </View>
+            <Pressable onPress={openBudget}>
+              <AppText tone="success" className="text-xs font-bold">
+                {budget ? `${percent}% USED` : "SET UP"}
+              </AppText>
+            </Pressable>
+          </View>
+          <Pressable onPress={openBudget} className="mt-3">
+            <Card>
+              <View className="flex-row items-center justify-between">
+                <AppText className="text-lg font-extrabold">
+                  {formatMoney(budgetSpent, baseCurrency)}
+                </AppText>
+                <AppText tone="secondary" className="text-sm">
+                  of{" "}
+                  {budget
+                    ? formatMoney(budget.amount, baseCurrency)
+                    : "no limit"}
+                </AppText>
+              </View>
+              <View
+                className="mt-5 h-3 overflow-hidden rounded-full"
+                style={{ backgroundColor: colors.background.subtle }}
+              >
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(percent, 100)}%`,
+                    backgroundColor:
+                      percent > 100
+                        ? colors.status.expense
+                        : colors.brand.primary,
+                  }}
+                />
+              </View>
+              <View className="mt-4 flex-row items-center gap-2">
+                <Ionicons
+                  name={percent > 100 ? "warning" : "checkmark-circle"}
+                  size={19}
+                  color={
+                    percent > 100 ? colors.status.expense : colors.status.income
+                  }
+                />
+                <AppText
+                  className="text-xs font-bold"
+                  style={{
+                    color:
+                      percent > 100
+                        ? colors.status.expense
+                        : colors.status.income,
+                  }}
+                >
+                  {!budget
+                    ? "CREATE YOUR FIRST BUDGET"
+                    : percent > 100
+                      ? "BUDGET EXCEEDED"
+                      : "YOU'RE ON TRACK"}
+                </AppText>
+              </View>
+            </Card>
+          </Pressable>
+        </ContentReveal>
+        <ContentReveal
+          delay={120}
+          distance={10}
+          style={{ flexDirection: "row", gap: 12 }}
+        >
+          <QuickAction
+            title="Add expense"
+            subtitle="Record spending"
+            icon="remove"
+            onPress={() => router.push("/add-expense")}
           />
-          <IncomeExpenseCard
-            title="EXPENSE"
-            amount="5000"
-            iconName="arrow-up"
+          <QuickAction
+            title="Add income"
+            subtitle="Record earnings"
+            icon="add"
+            primary
+            onPress={() => router.push("/add-income")}
           />
-        </View>
-      </View>
-
-      {/* Budget Information */}
-      <View className="flex-row items-center justify-between mt-8">
-        <AppText className="text-lg font-semibold">Montly budget</AppText>
-        <AppText tone="secondary" className="text-sm">
-          84% Used
-        </AppText>
-      </View>
-      <BudgetViewCard />
-
-      {/* expense / income log buttons */}
-      <View className="flex-row items-center justify-between mt-8 gap-4">
-        <ActionLogButton title="Add Expense" iconName="remove" />
-        <ActionLogButton title="Add Income" iconName="add" />
-      </View>
-
-      <CategorySummary onSeeAll={() => setIsTransactionsModalOpen(true)} />
-    </Screen>
+        </ContentReveal>
+        <ContentReveal delay={150} distance={10} ready={hasLoaded}>
+          <View className="flex-row items-end justify-between">
+            <View>
+              <AppText className="text-xl font-extrabold">
+                Top categories
+              </AppText>
+              <AppText tone="secondary" className="text-sm">
+                This month’s spending
+              </AppText>
+            </View>
+            <Pressable onPress={() => router.push("/(tabs)/stats")}>
+              <AppText tone="success" className="text-xs font-bold">
+                VIEW STATS
+              </AppText>
+            </Pressable>
+          </View>
+          {categoryRows.length ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 12, paddingVertical: 14 }}
+            >
+              {categoryRows.slice(0, 5).map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => router.push("/transactions")}
+                >
+                  <Card className="w-36 items-center">
+                    <View
+                      className="h-12 w-12 items-center justify-center rounded-2xl"
+                      style={{ backgroundColor: `${item.color}18` }}
+                    >
+                      <Ionicons
+                        name={item.icon as any}
+                        size={22}
+                        color={item.color}
+                      />
+                    </View>
+                    <AppText
+                      tone="secondary"
+                      numberOfLines={1}
+                      className="mt-3 max-w-28 text-center text-xs font-semibold"
+                    >
+                      {item.name}
+                    </AppText>
+                    <AppText className="mt-1 text-base font-extrabold">
+                      {formatMoney(item.total, baseCurrency)}
+                    </AppText>
+                  </Card>
+                </Pressable>
+              ))}
+            </ScrollView>
+          ) : (
+            <Card className="mt-4">
+              <AppText tone="secondary" className="text-center">
+                Your top spending categories will appear here.
+              </AppText>
+            </Card>
+          )}
+        </ContentReveal>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-export default Home;
+function AccountFilterChip({
+  label,
+  active,
+  onPress,
+}: {
+  label: string;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useAppTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      className="rounded-xl px-4 py-2"
+      style={{
+        backgroundColor: active
+          ? colors.brand.primary
+          : colors.background.surface,
+      }}
+    >
+      <AppText className="text-xs font-bold">{label}</AppText>
+    </Pressable>
+  );
+}
+function BalanceMetric({
+  label,
+  value,
+  icon,
+  color,
+  currency,
+}: {
+  label: string;
+  value: number;
+  icon: any;
+  color: string;
+  currency: string;
+}) {
+  return (
+    <View className="flex-1 flex-row items-center gap-3">
+      <View
+        className="h-11 w-11 items-center justify-center rounded-xl"
+        style={{ backgroundColor: `${color}18` }}
+      >
+        <Ionicons name={icon} size={22} color={color} />
+      </View>
+      <View className="min-w-0 flex-1">
+        <AppText
+          className="text-[10px] font-bold tracking-widest"
+          style={{ color: "#AFC4CE" }}
+        >
+          {label}
+        </AppText>
+        <AppText
+          className="mt-1 text-base font-extrabold"
+          style={{ color }}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.7}
+        >
+          {formatMoney(value, currency)}
+        </AppText>
+      </View>
+    </View>
+  );
+}
+function QuickAction({
+  title,
+  subtitle,
+  icon,
+  primary,
+  onPress,
+}: {
+  title: string;
+  subtitle: string;
+  icon: any;
+  primary?: boolean;
+  onPress: () => void;
+}) {
+  const { colors } = useAppTheme();
+  const cardStyle = {
+    width: "100%" as const,
+    height: 136,
+    padding: 20,
+    borderRadius: 24,
+    justifyContent: "space-between" as const,
+  };
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onPress();
+      }}
+      className="min-w-0 flex-1 overflow-hidden rounded-3xl active:opacity-85"
+      style={{ height: cardStyle.height }}
+    >
+      {primary ? (
+        <LinearGradient
+          colors={[colors.brand.primarySoft, colors.brand.primary]}
+          style={{
+            ...cardStyle,
+          }}
+        >
+          <View
+            className="h-10 w-10 items-center justify-center rounded-xl"
+            style={{ backgroundColor: "#FFFFFF40" }}
+          >
+            <Ionicons name={icon} size={23} color="#0A2940" />
+          </View>
+          <View>
+            <AppText className="font-extrabold" numberOfLines={1}>
+              {title}
+            </AppText>
+            <AppText
+              className="text-xs"
+              style={{ color: "#194733" }}
+              numberOfLines={1}
+            >
+              {subtitle}
+            </AppText>
+          </View>
+        </LinearGradient>
+      ) : (
+        <View
+          style={{
+            ...cardStyle,
+            backgroundColor: colors.background.surface,
+            borderWidth: 1,
+            borderColor: colors.border.soft,
+          }}
+        >
+          <View
+            className="h-10 w-10 items-center justify-center rounded-xl"
+            style={{ backgroundColor: colors.background.subtle }}
+          >
+            <Ionicons name={icon} size={23} color={colors.text.secondary} />
+          </View>
+          <View>
+            <AppText className="font-extrabold" numberOfLines={1}>
+              {title}
+            </AppText>
+            <AppText tone="secondary" className="text-xs" numberOfLines={1}>
+              {subtitle}
+            </AppText>
+          </View>
+        </View>
+      )}
+    </Pressable>
+  );
+}
