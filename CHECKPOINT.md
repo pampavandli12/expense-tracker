@@ -1,23 +1,30 @@
 # Expense Tracker — Production Readiness Checkpoint
 
-Checkpoint date: 2026-07-19 (Asia/Kolkata)
+Checkpoint date: 2026-07-29 (Asia/Kolkata)
 
 ## Current state
 
-The local-first product workflow and release foundation are implemented. The codebase is ready for a signed development-build QA phase, but it is not ready for store submission until physical-device testing, legal/store setup, and the deferred RevenueCat integration are completed.
+The local-first product workflow, freemium access model, and release foundation are implemented. The app now opens directly into the free experience and presents contextual Premium paywalls only when users select guarded features. The codebase is ready for native QA, but it is not ready for store submission until the current working tree is reviewed and committed, physical-device testing is completed, and legal/store setup is finished.
 
 Current Git branch: `codex/production-readiness`.
+
+Current base commit: `81d332d` (`add iOS glass tab navigation`).
+
+Important: the work described below is currently present as uncommitted working-tree changes. Preserve and review these changes before starting new feature work.
 
 ## Verified in this checkpoint
 
 - `npm run typecheck` — passing.
 - `npm run lint` — passing.
-- `npm test -- --runInBand` — 6 suites and 22 tests passing.
+- `npm test -- --runInBand` — 10 suites and 33 tests passing.
 - `npx expo install --check` — dependencies compatible with Expo SDK 54.
 - iOS Metro production export — passing.
 - Android Metro production export — passing.
-- Home and Add Expense visual regression checks passed on an iPhone 17 Pro simulator and Pixel 9a emulator.
+- Native Android `app:assembleDebug` — passing with Android Studio's bundled Java runtime.
+- Home, Add Expense, and the redesigned contextual paywall were visually checked on simulators/emulators.
+- Paywall hero, feature rows, scrolling, error state, and lower purchase/legal section were verified on the Android emulator.
 - Tab route filenames are normalized to lowercase for Linux/EAS compatibility.
+- The unused legacy `react-native-bottom-sheet@1.0.3` dependency was removed because its obsolete Gradle `compile(...)` configuration prevented native Android builds.
 - `npm audit --omit=dev` — 19 moderate findings remain in the Expo SDK 54 transitive toolchain. The offered remediation requires a breaking Expo 57 upgrade and was intentionally not forced into this checkpoint.
 - `npx expo-doctor` — could not complete because it hung without output in the restricted environment. Run it again in a normal networked terminal before producing signed builds.
 
@@ -50,7 +57,14 @@ Current Git branch: `codex/production-readiness`.
 - Notification permission status and link to device settings.
 - Opt-in biometric app lock with protected enable/disable, foreground re-authentication, device-credential fallback, and an opaque privacy screen.
 - In-app Terms and Privacy content plus environment-driven external paywall links.
-- RevenueCat service boundary and custom hard-paywall states; credentials/products remain deliberately unconfigured.
+- Freemium onboarding: new and returning free users enter the main application without a startup paywall.
+- Centralized subscription access provider with safe foreground refresh, purchase/restore updates, and protection against temporary network failures incorrectly downgrading Premium users.
+- Contextual, dismissible Premium paywall with feature-specific messaging, detailed benefits, selectable plans, renewal/downgrade disclosure, restore, and legal links.
+- Free access includes unlimited income/expense tracking, existing-record access, data export, app lock, themes, base currency, and basic Home summaries.
+- Premium guards cover more than two active accounts, custom category creation, advanced Stats, budgets, budget alerts, cross-currency transfers, and advanced transaction filters.
+- Downgrade behavior preserves existing accounts, categories, budgets, transfers, transactions, and exports; subscription loss never deletes or hides owned financial records.
+- Paywall visual design now matches the application: inset navy/emerald gradient hero, uniform rounded card shape, aligned full-width feature rows on phones, responsive wider layouts, and verified scrolling.
+- RevenueCat service boundary remains implemented, but store credentials, products, offering, entitlement, and production keys remain deliberately unconfigured.
 - `expo-dev-client` and EAS development, preview, and production profiles.
 - Native-only platform configuration, portrait phone support, notification assets, identifiers, and version codes.
 - Development-only isolated database self-check for migration idempotency, foreign keys, and rollback.
@@ -60,15 +74,15 @@ Current Git branch: `codex/production-readiness`.
 
 These require the owner’s accounts, signing credentials, published URLs, or physical devices:
 
-1. Replace the temporary identifier with the final company-owned iOS bundle identifier and Android application ID after owner approval.
-2. Create the App Store Connect and Google Play app records.
-3. Run `npx expo-doctor` in a networked terminal.
-4. Produce signed EAS development/preview builds and test on physical iOS and Android devices.
-5. Verify database persistence across termination, restart, and an app upgrade.
-6. Verify native date picker, biometric app lock, notification permission states, 80%/100% notifications, export, and share sheet.
-7. Publish Privacy Policy, Terms, and support pages, then configure their real URLs.
-8. Perform accessibility, small-device, Dynamic Type, keyboard, screen-reader, and performance QA.
-9. Resolve the remaining Expo transitive audit findings during a planned SDK upgrade, rather than using `npm audit fix --force` during release hardening.
+1. Review and commit the current working-tree changes as a traceable release-candidate baseline.
+2. Run `npx expo-doctor` and a fresh dependency audit in a normal networked terminal.
+3. Produce signed EAS development/preview builds and test on physical Android and iOS devices.
+4. Verify database persistence across termination, restart, and an app upgrade.
+5. Verify native date picker, biometric app lock, notification permission states, 80%/100% notifications, export, and share sheet.
+6. Publish Privacy Policy, Terms, and support pages, then configure their real URLs.
+7. Perform accessibility, small-device, Dynamic Type, keyboard, screen-reader, and performance QA.
+8. Resolve the remaining Expo transitive audit findings during a planned SDK upgrade, rather than using `npm audit fix --force` during release hardening.
+9. Keep the permanent Android application ID and RevenueCat/store-product setup deferred until the preceding hardening work is complete.
 
 ## RevenueCat — intentionally last
 
@@ -77,17 +91,20 @@ These require the owner’s accounts, signing credentials, published URLs, or ph
 - Add platform public SDK keys through EAS environment variables.
 - Test purchase, cancellation, retry, renewal, expiration, restore, billing issues, and cached offline entitlement.
 - Verify localized pricing and subscription disclosures.
-- Confirm the development preview bypass cannot appear in preview or production builds.
+- Confirm free users enter the app while every Premium action remains correctly guarded in preview and production builds.
+- Finalize the permanent Android application ID immediately before creating the definitive Play/RevenueCat application records.
 
 ## Next work session
 
-Start native QA rather than adding more UI:
+Start by stabilizing the current working tree, then continue native QA rather than adding more UI:
 
-1. Confirm the permanent application identifier.
-2. Run the development-only database self-check in a development client.
-3. Create signed iOS and Android development builds.
-4. Execute the documented financial smoke flow on both devices.
-5. Record device results and fix any P0/P1 defects before RevenueCat setup.
+1. Review the complete diff, especially the freemium guards, paywall redesign, responsive content animations, and iOS tab navigation.
+2. Re-run the full automated gate and commit the intended working-tree changes.
+3. Run the development-only database self-check in the Android development client.
+4. Execute the documented financial and freemium smoke flows on the Android emulator and a physical Android device.
+5. Verify free access, every Premium entry point, dismiss/restore/error states, and downgrade-safe access to existing records.
+6. Create a signed Android preview build without Metro and record the commit SHA, build ID, device, OS, date, and results.
+7. Fix any P0/P1 defect before changing the permanent Android application ID or configuring RevenueCat.
 
 ## Useful commands
 
@@ -99,4 +116,8 @@ npx expo install --check
 npx expo-doctor
 npx expo export --platform ios --output-dir .test-build/ios --clear
 npx expo export --platform android --output-dir .test-build/android --clear
+
+# Native Android verification when JAVA_HOME is not already configured
+JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" \
+  ./android/gradlew -p android app:assembleDebug -x lint -x test
 ```

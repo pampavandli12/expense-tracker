@@ -2,7 +2,6 @@ import AppText from "@/components/AppText";
 import { PrimaryButton } from "@/components/ui";
 import { getPreference, setPreference } from "@/db/repository";
 import { useAppTheme } from "@/lib/theme/useAppTheme";
-import { hasPremium } from "@/services/purchases";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Redirect, useRouter } from "expo-router";
@@ -21,21 +20,14 @@ export default function Index() {
   const heroArtworkSize = compact ? 205 : Math.min(250, width * 0.62);
   const [destination, setDestination] = useState<string>();
   useEffect(() => {
-    Promise.all([
-      getPreference("onboardingComplete"),
-      getPreference("devUnlocked"),
-      hasPremium().catch(() => false),
-    ]).then(([done, dev, premium]) => {
-      if (done === "true")
-        setDestination(
-          premium || (__DEV__ && dev === "true") ? "/(tabs)" : "/paywall",
-        );
+    getPreference("onboardingComplete").then((done) => {
+      if (done === "true") setDestination("/(tabs)");
     });
   }, []);
   if (destination) return <Redirect href={destination as never} />;
   const next = async () => {
     await setPreference("onboardingComplete", "true");
-    router.replace("/paywall");
+    router.replace("/(tabs)");
   };
   return (
     <SafeAreaView

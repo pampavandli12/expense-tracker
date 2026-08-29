@@ -1,4 +1,5 @@
 import AppText from "@/components/AppText";
+import { ContentReveal } from "@/components/ContentReveal";
 import { Card } from "@/components/ui";
 import {
   exportDatabaseSnapshot,
@@ -8,6 +9,7 @@ import {
 } from "@/db/repository";
 import { useTabBarMetrics } from "@/lib/navigation/tabBar";
 import { useAppLock } from "@/lib/security/AppLockProvider";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import {
   useAppPreferences,
   useAppTheme,
@@ -18,11 +20,6 @@ import {
   requestNotificationPermission,
   type NotificationPermissionState,
 } from "@/services/notifications";
-import {
-  configurePurchases,
-  hasPremium,
-  restorePurchases,
-} from "@/services/purchases";
 import { Ionicons } from "@expo/vector-icons";
 import Constants from "expo-constants";
 import * as FileSystem from "expo-file-system/legacy";
@@ -66,23 +63,22 @@ export default function Settings() {
     disableAppLock,
   } = useAppLock();
   const router = useRouter();
+  const {
+    accessLevel,
+    configured: purchasesConfigured,
+    loading: subscriptionLoading,
+    openPaywall,
+    restore: restoreSubscription,
+  } = useSubscription();
   const [currencies, setCurrencies] = useState<string[]>([baseCurrency]);
   const [notificationStatus, setNotificationStatus] =
     useState<NotificationPermissionState>("undetermined");
-  const [subscriptionStatus, setSubscriptionStatus] = useState("Setup pending");
 
   const refreshStatus = useCallback(() => {
     Promise.all([
       listAccounts(),
       getNotificationPermissionStatus(),
-      configurePurchases()
-        .then((configured) =>
-          configured
-            ? hasPremium().then((premium) => (premium ? "Premium" : "Inactive"))
-            : "Setup pending",
-        )
-        .catch(() => "Unavailable"),
-    ]).then(([accountRows, permission, subscription]) => {
+    ]).then(([accountRows, permission]) => {
       setCurrencies(
         Array.from(
           new Set([
@@ -92,7 +88,6 @@ export default function Settings() {
         ),
       );
       setNotificationStatus(permission);
-      setSubscriptionStatus(subscription);
     });
   }, [baseCurrency]);
 
@@ -288,7 +283,7 @@ export default function Settings() {
 
   const restore = async () => {
     try {
-      if (!(await configurePurchases())) {
+      if (!purchasesConfigured) {
         Alert.alert(
           "RevenueCat setup pending",
           "Purchase keys will be configured during the final release stage.",
@@ -296,7 +291,7 @@ export default function Settings() {
         return;
       }
       Alert.alert(
-        (await restorePurchases())
+        (await restoreSubscription())
           ? "Subscription restored"
           : "No active subscription found",
       );
@@ -381,8 +376,12 @@ export default function Settings() {
         {
           icon: "notifications",
           title: "Budget alerts",
-          value: notificationLabel,
-          onPress: configureNotifications,
+          value:
+            accessLevel === "premium" ? notificationLabel : "Premium",
+          onPress:
+            accessLevel === "premium"
+              ? configureNotifications
+              : () => openPaywall("budget_alert"),
         },
       ],
     },
@@ -426,7 +425,17 @@ export default function Settings() {
         {
           icon: "diamond",
           title: "Subscription",
-          value: subscriptionStatus,
+          value: subscriptionLoading
+            ? "Checking"
+            : accessLevel === "premium"
+              ? "Premium"
+              : purchasesConfigured
+                ? "Free"
+                : "Setup pending",
+          onPress:
+            accessLevel === "premium"
+              ? undefined
+              : () => openPaywall("settings"),
         },
         { icon: "refresh", title: "Restore purchases", onPress: restore },
         {
@@ -511,13 +520,13 @@ export default function Settings() {
           gap: 22,
         }}
       >
-        <View>
+        <ContentReveal distance={8} duration={200}>
           <AppText className="text-3xl font-extrabold">Settings</AppText>
           <AppText tone="secondary">
             Privacy, preferences, and your plan
           </AppText>
-        </View>
-        <View>
+        </ContentReveal>
+        <ContentReveal delay={40} distance={10}>
           <Card>
             <View className="flex-row items-center">
               <View
@@ -544,9 +553,13 @@ export default function Settings() {
               />
             </View>
           </Card>
-        </View>
-        {groups.map((group) => (
-          <View key={group.title}>
+        </ContentReveal>
+        {groups.map((group, groupIndex) => (
+          <ContentReveal
+            key={group.title}
+            delay={75 + Math.min(groupIndex, 2) * 35}
+            distance={10}
+          >
             <AppText
               tone="muted"
               className="mb-3 text-xs font-bold uppercase tracking-widest"
@@ -610,7 +623,7 @@ export default function Settings() {
                 </Pressable>
               ))}
             </Card>
-          </View>
+          </ContentReveal>
         ))}
       </ScrollView>
     </SafeAreaView>

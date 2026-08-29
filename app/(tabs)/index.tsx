@@ -1,4 +1,5 @@
 import AppText from "@/components/AppText";
+import { ContentReveal } from "@/components/ContentReveal";
 import { Card } from "@/components/ui";
 import {
   categorySummary,
@@ -10,6 +11,7 @@ import {
 } from "@/db/repository";
 import type { Account } from "@/db/schema";
 import { useTabBarMetrics } from "@/lib/navigation/tabBar";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -26,6 +28,7 @@ export default function Home() {
   const { contentBottomPadding } = useTabBarMetrics();
   const { baseCurrency } = useAppPreferences();
   const router: any = useRouter();
+  const { canUse, openPaywall } = useSubscription();
   const [date, setDate] = useState(new Date());
   const [summary, setSummary] = useState<Summary>({
     income: 0,
@@ -37,6 +40,7 @@ export default function Home() {
   const [accountId, setAccountId] = useState("all");
   const [budgetSpent, setBudgetSpent] = useState(0);
   const [budget, setBudget] = useState<Awaited<ReturnType<typeof getBudget>>>();
+  const [hasLoaded, setHasLoaded] = useState(false);
   const key = monthKey(date);
   useFocusEffect(
     useCallback(() => {
@@ -55,6 +59,7 @@ export default function Home() {
           accountRows.filter((account) => account.currency === baseCurrency),
         );
         setBudgetSpent(allAccountsSummary.expense);
+        setHasLoaded(true);
       });
     }, [accountId, baseCurrency, key]),
   );
@@ -65,6 +70,13 @@ export default function Home() {
     );
   };
   const percent = budget ? Math.round((budgetSpent / budget.amount) * 100) : 0;
+  const openBudget = () => {
+    if (!budget && !canUse("budgets")) {
+      openPaywall("budget");
+      return;
+    }
+    router.push("/budget");
+  };
   return (
     <SafeAreaView
       edges={["top", "left", "right"]}
@@ -81,7 +93,15 @@ export default function Home() {
           gap: 20,
         }}
       >
-        <View className="flex-row items-center justify-between">
+        <ContentReveal
+          distance={8}
+          duration={200}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <Pressable
             onPress={() => moveMonth(-1)}
             className="h-11 w-11 items-center justify-center rounded-2xl"
@@ -118,29 +138,31 @@ export default function Home() {
               color={colors.text.secondary}
             />
           </Pressable>
-        </View>
+        </ContentReveal>
         {accounts.length > 1 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-          >
-            <AccountFilterChip
-              label="All accounts"
-              active={accountId === "all"}
-              onPress={() => setAccountId("all")}
-            />
-            {accounts.map((account) => (
+          <ContentReveal delay={35} distance={8} ready={hasLoaded}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
               <AccountFilterChip
-                key={account.id}
-                label={account.name}
-                active={accountId === account.id}
-                onPress={() => setAccountId(account.id)}
+                label="All accounts"
+                active={accountId === "all"}
+                onPress={() => setAccountId("all")}
               />
-            ))}
-          </ScrollView>
+              {accounts.map((account) => (
+                <AccountFilterChip
+                  key={account.id}
+                  label={account.name}
+                  active={accountId === account.id}
+                  onPress={() => setAccountId(account.id)}
+                />
+              ))}
+            </ScrollView>
+          </ContentReveal>
         )}
-        <View>
+        <ContentReveal delay={55} distance={12} ready={hasLoaded}>
           <LinearGradient
             colors={
               isDark
@@ -207,8 +229,8 @@ export default function Home() {
               />
             </View>
           </LinearGradient>
-        </View>
-        <View>
+        </ContentReveal>
+        <ContentReveal delay={90} distance={10} ready={hasLoaded}>
           <View className="flex-row items-end justify-between">
             <View>
               <AppText className="text-xl font-extrabold">
@@ -218,13 +240,13 @@ export default function Home() {
                 Stay ahead of your spending
               </AppText>
             </View>
-            <Pressable onPress={() => router.push("/budget")}>
+            <Pressable onPress={openBudget}>
               <AppText tone="success" className="text-xs font-bold">
                 {budget ? `${percent}% USED` : "SET UP"}
               </AppText>
             </Pressable>
           </View>
-          <Pressable onPress={() => router.push("/budget")} className="mt-3">
+          <Pressable onPress={openBudget} className="mt-3">
             <Card>
               <View className="flex-row items-center justify-between">
                 <AppText className="text-lg font-extrabold">
@@ -278,8 +300,12 @@ export default function Home() {
               </View>
             </Card>
           </Pressable>
-        </View>
-        <View className="flex-row gap-3">
+        </ContentReveal>
+        <ContentReveal
+          delay={120}
+          distance={10}
+          style={{ flexDirection: "row", gap: 12 }}
+        >
           <QuickAction
             title="Add expense"
             subtitle="Record spending"
@@ -293,8 +319,8 @@ export default function Home() {
             primary
             onPress={() => router.push("/add-income")}
           />
-        </View>
-        <View>
+        </ContentReveal>
+        <ContentReveal delay={150} distance={10} ready={hasLoaded}>
           <View className="flex-row items-end justify-between">
             <View>
               <AppText className="text-xl font-extrabold">
@@ -353,7 +379,7 @@ export default function Home() {
               </AppText>
             </Card>
           )}
-        </View>
+        </ContentReveal>
       </ScrollView>
     </SafeAreaView>
   );

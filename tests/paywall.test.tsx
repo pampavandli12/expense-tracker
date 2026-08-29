@@ -2,27 +2,33 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 import Paywall from "@/app/paywall";
-import {
-  getPackages,
-  purchasePackage,
-  restorePurchases,
-} from "@/services/purchases";
+import { getPackages } from "@/services/purchases";
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
+const mockBack = jest.fn();
+const mockPurchase = jest.fn();
+const mockRestore = jest.fn();
 
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace, push: mockPush }),
+  useLocalSearchParams: () => ({}),
+  useRouter: () => ({
+    back: mockBack,
+    canGoBack: () => true,
+    replace: mockReplace,
+    push: mockPush,
+  }),
 }));
 
-jest.mock("@/db/repository", () => ({
-  setPreference: jest.fn().mockResolvedValue(undefined),
+jest.mock("@/lib/subscription/SubscriptionProvider", () => ({
+  useSubscription: () => ({
+    purchase: mockPurchase,
+    restore: mockRestore,
+  }),
 }));
 
 jest.mock("@/services/purchases", () => ({
   getPackages: jest.fn(),
-  purchasePackage: jest.fn(),
-  restorePurchases: jest.fn(),
 }));
 
 jest.mock("@/lib/theme/useAppTheme", () => {
@@ -42,8 +48,6 @@ jest.mock("@expo/vector-icons", () => ({
 }));
 
 const getPackagesMock = jest.mocked(getPackages);
-const purchasePackageMock = jest.mocked(purchasePackage);
-const restorePurchasesMock = jest.mocked(restorePurchases);
 
 describe("paywall states", () => {
   beforeEach(() => {
@@ -78,6 +82,29 @@ describe("paywall states", () => {
     await waitFor(() => expect(getPackagesMock).toHaveBeenCalledTimes(2));
   });
 
+  it("explains every premium capability", async () => {
+    getPackagesMock.mockResolvedValue([]);
+    const screen = render(<Paywall />);
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          "Subscriptions are not configured for this build yet.",
+        ),
+      ).toBeTruthy(),
+    );
+
+    for (const feature of [
+      "Unlimited accounts",
+      "Custom categories",
+      "Advanced insights",
+      "Smart budgets",
+      "Private alerts",
+      "Cross-currency transfers",
+    ]) {
+      expect(screen.getByText(feature)).toBeTruthy();
+    }
+  });
+
   it("selects annual by default and handles purchase cancellation quietly", async () => {
     const annual = {
       identifier: "$rc_annual",
@@ -89,8 +116,8 @@ describe("paywall states", () => {
       },
     } as never;
     getPackagesMock.mockResolvedValue([annual]);
-    purchasePackageMock.mockRejectedValue({ userCancelled: true });
-    restorePurchasesMock.mockResolvedValue(false);
+    mockPurchase.mockRejectedValue({ userCancelled: true });
+    mockRestore.mockResolvedValue(false);
     const alert = jest
       .spyOn(Alert, "alert")
       .mockImplementation(() => undefined);
@@ -101,7 +128,7 @@ describe("paywall states", () => {
       fireEvent.press(screen.getByRole("button", { name: "Start with ₹999" })),
     );
     await waitFor(() =>
-      expect(purchasePackageMock).toHaveBeenCalledWith(annual),
+      expect(mockPurchase).toHaveBeenCalledWith(annual),
     );
     expect(alert).not.toHaveBeenCalledWith(
       "Purchase not completed",

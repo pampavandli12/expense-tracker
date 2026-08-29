@@ -1,4 +1,5 @@
 import AppText from "@/components/AppText";
+import { ContentReveal } from "@/components/ContentReveal";
 import { Card, PrimaryButton } from "@/components/ui";
 import {
   accountBalances,
@@ -9,6 +10,8 @@ import {
   updateAccount,
 } from "@/db/repository";
 import { useTabBarMetrics } from "@/lib/navigation/tabBar";
+import { FREE_ACTIVE_ACCOUNT_LIMIT } from "@/lib/subscription/access";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -29,10 +32,19 @@ export default function Accounts() {
   const { contentBottomPadding } = useTabBarMetrics();
   const { baseCurrency } = useAppPreferences();
   const router = useRouter();
+  const { canUse, openPaywall } = useSubscription();
   const [rows, setRows] = useState<Row[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row>();
-  const load = useCallback(() => accountBalances().then(setRows), []);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const load = useCallback(
+    () =>
+      accountBalances().then((accountRows) => {
+        setRows(accountRows);
+        setHasLoaded(true);
+      }),
+    [],
+  );
   useFocusEffect(
     useCallback(() => {
       load();
@@ -41,6 +53,17 @@ export default function Accounts() {
   const total = rows
     .filter((r) => r.currency === baseCurrency)
     .reduce((sum, r) => sum + r.balance, 0);
+  const openAccountCreator = () => {
+    if (
+      rows.length >= FREE_ACTIVE_ACCOUNT_LIMIT &&
+      !canUse("unlimited_accounts")
+    ) {
+      openPaywall("account_limit");
+      return;
+    }
+    setEditing(undefined);
+    setOpen(true);
+  };
   return (
     <SafeAreaView
       edges={["top", "left", "right"]}
@@ -56,7 +79,15 @@ export default function Accounts() {
           gap: 18,
         }}
       >
-        <View className="flex-row items-center justify-between">
+        <ContentReveal
+          distance={8}
+          duration={200}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <View>
             <AppText className="text-3xl font-extrabold">Accounts</AppText>
             <AppText tone="secondary">Your money, organised clearly</AppText>
@@ -78,18 +109,15 @@ export default function Accounts() {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add account"
-              onPress={() => {
-                setEditing(undefined);
-                setOpen(true);
-              }}
+              onPress={openAccountCreator}
               className="h-12 w-12 items-center justify-center rounded-2xl"
               style={{ backgroundColor: colors.brand.primary }}
             >
               <Ionicons name="add" size={27} color="#0A2940" />
             </Pressable>
           </View>
-        </View>
-        <View>
+        </ContentReveal>
+        <ContentReveal delay={45} distance={12} ready={hasLoaded}>
           <LinearGradient
             colors={isDark ? ["#19384A", "#123025"] : ["#0F253A", "#17613A"]}
             style={{ borderRadius: 26, padding: 23 }}
@@ -113,88 +141,98 @@ export default function Accounts() {
               {rows.length} active {rows.length === 1 ? "account" : "accounts"}
             </AppText>
           </LinearGradient>
-        </View>
-        <View>
-          <AppText className="text-xl font-extrabold">Your accounts</AppText>
-          <AppText tone="secondary" className="text-sm">
-            Balances update with every transaction
-          </AppText>
-        </View>
-        {rows.map((row) => (
-          <Pressable
-            key={row.id}
-            accessibilityRole="button"
-            accessibilityLabel={`View ${row.name} account`}
-            onPress={() =>
-              router.push({ pathname: "/account/[id]", params: { id: row.id } })
-            }
-          >
-            <Card>
-              <View className="flex-row items-center">
-                <View
-                  className="h-13 w-13 items-center justify-center rounded-2xl p-3"
-                  style={{ backgroundColor: colors.background.subtle }}
-                >
-                  <Ionicons
-                    name={
-                      row.type === "cash"
-                        ? "cash"
-                        : row.type === "card"
-                          ? "card"
-                          : row.type === "bank"
-                            ? "business"
-                            : "wallet"
-                    }
-                    size={25}
-                    color={colors.brand.primary}
-                  />
-                </View>
-                <View className="ml-4 flex-1">
-                  <AppText className="text-base font-extrabold">
-                    {row.name}
-                  </AppText>
-                  <AppText tone="muted" className="mt-1 text-xs capitalize">
-                    {row.type} · {row.currency}
-                  </AppText>
-                </View>
-                <View className="items-end">
-                  <AppText className="text-lg font-extrabold">
-                    {formatMoney(row.balance, row.currency)}
-                  </AppText>
-                  <Pressable
-                    accessibilityRole="button"
-                    accessibilityLabel={`Edit ${row.name} account`}
-                    onPress={(event) => {
-                      event.stopPropagation();
-                      setEditing(row);
-                      setOpen(true);
-                    }}
-                    className="mt-1 h-8 w-8 items-center justify-center rounded-lg"
+        </ContentReveal>
+        <ContentReveal
+          delay={85}
+          distance={10}
+          ready={hasLoaded}
+          style={{ gap: 18 }}
+        >
+          <View>
+            <AppText className="text-xl font-extrabold">Your accounts</AppText>
+            <AppText tone="secondary" className="text-sm">
+              Balances update with every transaction
+            </AppText>
+          </View>
+          {rows.map((row) => (
+            <Pressable
+              key={row.id}
+              accessibilityRole="button"
+              accessibilityLabel={`View ${row.name} account`}
+              onPress={() =>
+                router.push({
+                  pathname: "/account/[id]",
+                  params: { id: row.id },
+                })
+              }
+            >
+              <Card>
+                <View className="flex-row items-center">
+                  <View
+                    className="h-13 w-13 items-center justify-center rounded-2xl p-3"
                     style={{ backgroundColor: colors.background.subtle }}
                   >
                     <Ionicons
-                      name="create-outline"
-                      size={16}
-                      color={colors.text.muted}
+                      name={
+                        row.type === "cash"
+                          ? "cash"
+                          : row.type === "card"
+                            ? "card"
+                            : row.type === "bank"
+                              ? "business"
+                              : "wallet"
+                      }
+                      size={25}
+                      color={colors.brand.primary}
                     />
-                  </Pressable>
+                  </View>
+                  <View className="ml-4 flex-1">
+                    <AppText className="text-base font-extrabold">
+                      {row.name}
+                    </AppText>
+                    <AppText tone="muted" className="mt-1 text-xs capitalize">
+                      {row.type} · {row.currency}
+                    </AppText>
+                  </View>
+                  <View className="items-end">
+                    <AppText className="text-lg font-extrabold">
+                      {formatMoney(row.balance, row.currency)}
+                    </AppText>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Edit ${row.name} account`}
+                      onPress={(event) => {
+                        event.stopPropagation();
+                        setEditing(row);
+                        setOpen(true);
+                      }}
+                      className="mt-1 h-8 w-8 items-center justify-center rounded-lg"
+                      style={{ backgroundColor: colors.background.subtle }}
+                    >
+                      <Ionicons
+                        name="create-outline"
+                        size={16}
+                        color={colors.text.muted}
+                      />
+                    </Pressable>
+                  </View>
                 </View>
-              </View>
-            </Card>
+              </Card>
+            </Pressable>
+          ))}
+          <Pressable
+            onPress={openAccountCreator}
+            className="items-center rounded-3xl border border-dashed py-5"
+            style={{ borderColor: colors.border.default }}
+          >
+            <AppText tone="success" className="font-bold">
+              {rows.length >= FREE_ACTIVE_ACCOUNT_LIMIT &&
+              !canUse("unlimited_accounts")
+                ? "Unlock unlimited accounts"
+                : "+ Add another account"}
+            </AppText>
           </Pressable>
-        ))}
-        <Pressable
-          onPress={() => {
-            setEditing(undefined);
-            setOpen(true);
-          }}
-          className="items-center rounded-3xl border border-dashed py-5"
-          style={{ borderColor: colors.border.default }}
-        >
-          <AppText tone="success" className="font-bold">
-            + Add another account
-          </AppText>
-        </Pressable>
+        </ContentReveal>
       </ScrollView>
       <AccountModal
         visible={open}

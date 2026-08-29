@@ -8,6 +8,7 @@ import {
 } from "@/db/repository";
 import type { Category } from "@/db/schema";
 import { useAppTheme } from "@/lib/theme/useAppTheme";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
@@ -42,6 +43,7 @@ const categoryColors = [
 
 export default function CategoriesScreen() {
   const { colors } = useAppTheme();
+  const { requireFeature } = useSubscription();
   const [kind, setKind] = useState<"expense" | "income">("expense");
   const [rows, setRows] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Category>();
@@ -65,6 +67,7 @@ export default function CategoriesScreen() {
             accessibilityRole="button"
             accessibilityLabel="Add category"
             onPress={() => {
+              if (!requireFeature("custom_categories")) return;
               setEditing(undefined);
               setOpen(true);
             }}

@@ -7,6 +7,7 @@ import AppText from "@/components/AppText";
 import { useCallback, useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { AppLockProvider } from "@/lib/security/AppLockProvider";
+import { SubscriptionProvider } from "@/lib/subscription/SubscriptionProvider";
 
 export default function RootLayout() {
   return (
@@ -73,7 +74,9 @@ function RootNavigator() {
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <AppLockProvider>
-        <Stack screenOptions={{ headerShown: false }} />
+        <SubscriptionProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </SubscriptionProvider>
       </AppLockProvider>
     </>
   );

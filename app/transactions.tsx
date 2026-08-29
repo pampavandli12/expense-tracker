@@ -1,4 +1,5 @@
 import AppText from "@/components/AppText";
+import { ContentReveal } from "@/components/ContentReveal";
 import { Card, Header } from "@/components/ui";
 import {
   deleteTransaction,
@@ -11,11 +12,19 @@ import {
 } from "@/db/repository";
 import type { Account, Category } from "@/db/schema";
 import { useAppTheme } from "@/lib/theme/useAppTheme";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
+import {
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type Row = Awaited<ReturnType<typeof listTransactions>>[number];
@@ -25,6 +34,7 @@ type ExpenseFilter = "all" | "fixed" | "variable";
 export default function TransactionsScreen() {
   const { colors, isDark } = useAppTheme();
   const router = useRouter();
+  const { canUse, openPaywall } = useSubscription();
   const [date, setDate] = useState(new Date());
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState<KindFilter>("all");
@@ -35,6 +45,7 @@ export default function TransactionsScreen() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [rows, setRows] = useState<Row[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const filters: TransactionFilters = useMemo(
     () => ({
       month: monthKey(date),
@@ -47,7 +58,11 @@ export default function TransactionsScreen() {
     [accountId, categoryId, date, expenseType, kind, query],
   );
   const load = useCallback(
-    () => listTransactions(filters).then(setRows),
+    () =>
+      listTransactions(filters).then((transactionRows) => {
+        setRows(transactionRows);
+        setHasLoaded(true);
+      }),
     [filters],
   );
 
@@ -127,36 +142,46 @@ export default function TransactionsScreen() {
       className="flex-1"
       style={{ backgroundColor: colors.background.base }}
     >
-      <Header
-        title="Transactions"
-        action={
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Show transaction filters"
-            onPress={() => setShowFilters((value) => !value)}
-            className="h-11 w-11 items-center justify-center rounded-2xl"
-            style={{ backgroundColor: colors.background.surface }}
-          >
-            <Ionicons name="options" size={21} color={colors.text.primary} />
-            {activeFilterCount > 0 && (
-              <View
-                className="absolute right-1 top-1 h-4 min-w-4 items-center justify-center rounded-full px-1"
-                style={{ backgroundColor: colors.brand.primary }}
-              >
-                <AppText className="text-[9px] font-bold">
-                  {activeFilterCount}
-                </AppText>
-              </View>
-            )}
-          </Pressable>
-        }
-      />
+      <ContentReveal distance={8} duration={200}>
+        <Header
+          title="Transactions"
+          action={
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Show transaction filters"
+              onPress={() => setShowFilters((value) => !value)}
+              className="h-11 w-11 items-center justify-center rounded-2xl"
+              style={{ backgroundColor: colors.background.surface }}
+            >
+              <Ionicons name="options" size={21} color={colors.text.primary} />
+              {activeFilterCount > 0 && (
+                <View
+                  className="absolute right-1 top-1 h-4 min-w-4 items-center justify-center rounded-full px-1"
+                  style={{ backgroundColor: colors.brand.primary }}
+                >
+                  <AppText className="text-[9px] font-bold">
+                    {activeFilterCount}
+                  </AppText>
+                </View>
+              )}
+            </Pressable>
+          }
+        />
+      </ContentReveal>
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: 18, paddingBottom: 60, gap: 12 }}
       >
-        <View className="flex-row items-center justify-between">
+        <ContentReveal
+          delay={25}
+          distance={8}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
           <Pressable
             accessibilityLabel="Previous month"
             onPress={() =>
@@ -197,14 +222,31 @@ export default function TransactionsScreen() {
               color={colors.text.primary}
             />
           </Pressable>
-        </View>
+        </ContentReveal>
 
-        <View
-          className="mt-1 flex-row items-center rounded-2xl px-4"
+        <ContentReveal
+          delay={45}
+          distance={8}
           style={{
-            backgroundColor: colors.background.surface,
+            marginTop: 4,
+            flexDirection: "row",
+            alignItems: "center",
+            borderRadius: 16,
+            paddingHorizontal: 16,
+            backgroundColor:
+              Platform.OS === "ios"
+                ? colors.background.surfaceRaised
+                : colors.background.surface,
             borderWidth: 1,
-            borderColor: colors.border.soft,
+            borderColor:
+              Platform.OS === "ios"
+                ? colors.border.default
+                : colors.border.soft,
+            ...(Platform.OS === "ios" && {
+              height: 52,
+              borderRadius: 18,
+              paddingHorizontal: 14,
+            }),
           }}
         >
           <Ionicons name="search" size={19} color={colors.text.muted} />
@@ -215,12 +257,32 @@ export default function TransactionsScreen() {
             placeholder="Search category, account, or notes"
             placeholderTextColor={colors.text.muted}
             className="h-13 ml-3 flex-1"
-            style={{ color: colors.text.primary }}
+            style={{
+              color: colors.text.primary,
+              ...(Platform.OS === "ios" && {
+                height: 50,
+                paddingVertical: 0,
+                fontSize: 16,
+                lineHeight: 22,
+              }),
+            }}
           />
           {!!query && (
             <Pressable
               accessibilityLabel="Clear search"
               onPress={() => setQuery("")}
+              hitSlop={8}
+              style={
+                Platform.OS === "ios"
+                  ? {
+                      width: 36,
+                      height: 44,
+                      marginRight: -8,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }
+                  : undefined
+              }
             >
               <Ionicons
                 name="close-circle"
@@ -229,7 +291,7 @@ export default function TransactionsScreen() {
               />
             </Pressable>
           )}
-        </View>
+        </ContentReveal>
 
         {showFilters && (
           <Card>
@@ -243,7 +305,16 @@ export default function TransactionsScreen() {
               label="CLASSIFICATION"
               values={["all", "variable", "fixed"]}
               selected={expenseType}
-              onSelect={(value) => setExpenseType(value as ExpenseFilter)}
+              onSelect={(value) => {
+                if (
+                  value !== "all" &&
+                  !canUse("advanced_filters")
+                ) {
+                  openPaywall("advanced_filter");
+                  return;
+                }
+                setExpenseType(value as ExpenseFilter);
+              }}
             />
             <AppText
               tone="muted"
@@ -266,7 +337,13 @@ export default function TransactionsScreen() {
                   key={account.id}
                   label={account.name}
                   active={accountId === account.id}
-                  onPress={() => setAccountId(account.id)}
+                  onPress={() => {
+                    if (!canUse("advanced_filters")) {
+                      openPaywall("advanced_filter");
+                      return;
+                    }
+                    setAccountId(account.id);
+                  }}
                 />
               ))}
             </ScrollView>
@@ -293,7 +370,13 @@ export default function TransactionsScreen() {
                     key={category.id}
                     label={category.name}
                     active={categoryId === category.id}
-                    onPress={() => setCategoryId(category.id)}
+                    onPress={() => {
+                      if (!canUse("advanced_filters")) {
+                        openPaywall("advanced_filter");
+                        return;
+                      }
+                      setCategoryId(category.id);
+                    }}
                   />
                 ))}
             </ScrollView>
@@ -310,7 +393,7 @@ export default function TransactionsScreen() {
           </Card>
         )}
 
-        <View>
+        <ContentReveal delay={70} distance={10} ready={hasLoaded}>
           <LinearGradient
             colors={isDark ? ["#19384A", "#123025"] : ["#0F253A", "#17613A"]}
             style={{
@@ -322,14 +405,16 @@ export default function TransactionsScreen() {
             <Total label="INCOME" value={income} color="#58F492" />
             <Total label="EXPENSE" value={expenses} color="#9EC0FF" />
           </LinearGradient>
-        </View>
+        </ContentReveal>
 
-        <View className="mb-1 mt-3">
-          <AppText className="text-xl font-extrabold">Results</AppText>
-          <AppText tone="secondary" className="text-sm">
-            {rows.length} {rows.length === 1 ? "transaction" : "transactions"}
-          </AppText>
-        </View>
+        <ContentReveal delay={105} distance={10} ready={hasLoaded}>
+          <View className="mb-1 mt-3">
+            <AppText className="text-xl font-extrabold">Results</AppText>
+            <AppText tone="secondary" className="text-sm">
+              {rows.length} {rows.length === 1 ? "transaction" : "transactions"}
+            </AppText>
+          </View>
+        </ContentReveal>
 
         {rows.map((row) => (
           <Card key={row.transaction.id}>

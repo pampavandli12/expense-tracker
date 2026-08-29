@@ -4,6 +4,7 @@ import { Card, Header, PrimaryButton } from "@/components/ui";
 import { createTransfer, listAccounts, toMinorUnits } from "@/db/repository";
 import type { Account } from "@/db/schema";
 import { useAppTheme } from "@/lib/theme/useAppTheme";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
@@ -21,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function TransferScreen() {
   const { colors } = useAppTheme();
   const router = useRouter();
+  const { canUse, openPaywall } = useSubscription();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [fromAccountId, setFromAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
@@ -63,6 +65,10 @@ export default function TransferScreen() {
   }, [availableDestinations, fromAccountId, toAccountId]);
 
   const save = async () => {
+    if (!sameCurrency && !canUse("cross_currency_transfers")) {
+      openPaywall("cross_currency_transfer");
+      return;
+    }
     if (!valid) return;
     setSaving(true);
     try {

@@ -6,7 +6,7 @@ A privacy-first, local-only expense tracker for iOS and Android. Financial recor
 
 ## What the app includes
 
-- Onboarding followed by a custom hard paywall.
+- Freemium onboarding with contextual Premium prompts for advanced features.
 - Monthly Home overview with income, expense, remaining balance, budget usage, and top categories.
 - Income and expense creation, editing, deletion, notes, classification, account, category, and past-date selection.
 - Searchable transaction history with month, kind, fixed/variable, account, and category filters.
@@ -228,7 +228,7 @@ npx eas-cli@latest build --platform ios --profile preview
 
 The Android internal-distribution profile produces an installable APK. iOS internal distribution uses ad hoc provisioning and therefore requires registered device UDIDs. Share only the EAS internal-build link with authorized testers.
 
-Before sharing a preview build, verify that the development paywall bypass is absent and that the correct preview environment variables were used.
+Before sharing a preview build, verify that free users can enter the app, Premium feature guards remain active, and the correct preview environment variables were used.
 
 ## Configure EAS environments
 

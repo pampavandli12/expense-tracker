@@ -1,5 +1,6 @@
 import AppText from "@/components/AppText";
-import { Card } from "@/components/ui";
+import { ContentReveal, DataFade } from "@/components/ContentReveal";
+import { Card, PrimaryButton } from "@/components/ui";
 import {
   categorySummary,
   formatMoney,
@@ -15,12 +16,13 @@ import {
   getLineChartLayout,
 } from "@/lib/chartLayout";
 import { useTabBarMetrics } from "@/lib/navigation/tabBar";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import * as Haptics from "expo-haptics";
 import { useFocusEffect } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import {
   BarChart,
@@ -36,6 +38,60 @@ type Period = 3 | 6 | 12;
 const LineChart: any = GiftedLineChart;
 
 export default function Stats() {
+  const { canUse, openPaywall } = useSubscription();
+  const { colors } = useAppTheme();
+  const { contentBottomPadding } = useTabBarMetrics();
+
+  if (canUse("advanced_stats")) return <PremiumStats />;
+
+  return (
+    <SafeAreaView
+      edges={["top", "left", "right"]}
+      className="flex-1"
+      style={{ backgroundColor: colors.background.base }}
+    >
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          padding: 20,
+          paddingBottom: contentBottomPadding,
+        }}
+      >
+        <AppText className="text-3xl font-extrabold">Stats</AppText>
+        <AppText tone="secondary" className="mt-1">
+          Your monthly totals remain available on Home.
+        </AppText>
+        <Card className="mt-8">
+          <View
+            className="h-16 w-16 items-center justify-center rounded-3xl"
+            style={{ backgroundColor: colors.brand.primarySoft }}
+          >
+            <Ionicons
+              name="analytics"
+              size={31}
+              color={colors.brand.primary}
+            />
+          </View>
+          <AppText className="mt-5 text-2xl font-extrabold">
+            Understand your spending patterns
+          </AppText>
+          <AppText tone="secondary" className="mt-3 leading-6">
+            Premium unlocks category rankings, cash-flow charts, spending
+            trends, and comparisons across your accounts.
+          </AppText>
+          <View className="mt-6">
+            <PrimaryButton
+              title="Explore Premium insights"
+              onPress={() => openPaywall("stats")}
+            />
+          </View>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+function PremiumStats() {
   const { colors, isDark } = useAppTheme();
   const { contentBottomPadding } = useTabBarMetrics();
   const { baseCurrency } = useAppPreferences();
@@ -48,6 +104,8 @@ export default function Stats() {
   const [period, setPeriod] = useState<Period>(6);
   const [loading, setLoading] = useState(true);
   const [chartRevision, setChartRevision] = useState(0);
+  const dataRequestKey = `${baseCurrency}:${accountId}:${period}`;
+  const previousDataRequestKey = useRef(dataRequestKey);
   const load = useCallback(() => {
     setLoading(true);
     const selectedAccountId = accountId === "all" ? undefined : accountId;
@@ -69,10 +127,13 @@ export default function Stats() {
         ) {
           setAccountId("all");
         }
-        setChartRevision((value) => value + 1);
+        if (previousDataRequestKey.current !== dataRequestKey) {
+          previousDataRequestKey.current = dataRequestKey;
+          setChartRevision((value) => value + 1);
+        }
       })
       .finally(() => setLoading(false));
-  }, [accountId, baseCurrency, period]);
+  }, [accountId, baseCurrency, dataRequestKey, period]);
   useFocusEffect(
     useCallback(() => {
       load();
@@ -130,6 +191,12 @@ export default function Stats() {
     () => getLineChartLayout(trend.length, linePlotWidth),
     [linePlotWidth, trend.length],
   );
+  const chartsReady =
+    !loading &&
+    Number.isFinite(barPlotWidth) &&
+    Number.isFinite(linePlotWidth) &&
+    barPlotWidth > 0 &&
+    linePlotWidth > 0;
   const xAxisLabelStyle = useMemo(
     () => ({
       color: colors.text.muted,
@@ -189,7 +256,15 @@ export default function Stats() {
           gap: 18,
         }}
       >
-        <View className="flex-row items-end justify-between">
+        <ContentReveal
+          distance={8}
+          duration={200}
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+          }}
+        >
           <View>
             <AppText className="text-3xl font-extrabold">Statistics</AppText>
             <AppText tone="secondary" className="mt-1">
@@ -202,31 +277,33 @@ export default function Stats() {
           >
             <Ionicons name="sparkles" size={21} color={colors.brand.primary} />
           </View>
-        </View>
+        </ContentReveal>
 
         {accounts.length > 1 && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8 }}
-          >
-            <AccountFilterChip
-              label="All accounts"
-              active={accountId === "all"}
-              onPress={() => setAccountId("all")}
-            />
-            {accounts.map((account) => (
+          <ContentReveal delay={30} distance={8} ready={!loading}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
               <AccountFilterChip
-                key={account.id}
-                label={account.name}
-                active={accountId === account.id}
-                onPress={() => setAccountId(account.id)}
+                label="All accounts"
+                active={accountId === "all"}
+                onPress={() => setAccountId("all")}
               />
-            ))}
-          </ScrollView>
+              {accounts.map((account) => (
+                <AccountFilterChip
+                  key={account.id}
+                  label={account.name}
+                  active={accountId === account.id}
+                  onPress={() => setAccountId(account.id)}
+                />
+              ))}
+            </ScrollView>
+          </ContentReveal>
         )}
 
-        <View>
+        <ContentReveal delay={70} distance={10} ready={!loading}>
           <LinearGradient
             colors={
               isDark
@@ -286,9 +363,9 @@ export default function Stats() {
               />
             </View>
           </LinearGradient>
-        </View>
+        </ContentReveal>
 
-        <View>
+        <ContentReveal delay={40} distance={8}>
           <View
             className="flex-row rounded-2xl p-1"
             style={{ backgroundColor: colors.background.subtle }}
@@ -323,82 +400,87 @@ export default function Stats() {
               </Pressable>
             ))}
           </View>
-        </View>
+        </ContentReveal>
 
-        <View>
+        <ContentReveal delay={110} distance={10} ready={chartsReady}>
           <ModernCard>
             <SectionHeader
               title="Expense mix"
               subtitle="Where your money went"
               icon="pie-chart"
             />
-            {total ? (
-              <View className="mt-3 flex-row items-center">
-                <View className="w-[53%] items-center">
-                  <PieChart
-                    key={`pie-${period}-${chartRevision}`}
-                    data={pieData}
-                    donut
-                    radius={86}
-                    innerRadius={61}
-                    innerCircleColor={colors.background.surface}
-                    isAnimated={!reducedMotion}
-                    animationDuration={850}
-                    sectionAutoFocus
-                    centerLabelComponent={() => (
-                      <View className="items-center">
+            <DataFade ready={chartsReady} revision={chartRevision}>
+              {total ? (
+                <View className="mt-3 flex-row items-center">
+                  <View className="w-[53%] items-center">
+                    <PieChart
+                      key={`pie-${period}-${chartRevision}`}
+                      data={pieData}
+                      donut
+                      radius={86}
+                      innerRadius={61}
+                      innerCircleColor={colors.background.surface}
+                      isAnimated={!reducedMotion}
+                      animationDuration={300}
+                      sectionAutoFocus
+                      centerLabelComponent={() => (
+                        <View className="items-center">
+                          <AppText
+                            tone="muted"
+                            className="text-[10px] font-bold tracking-widest"
+                          >
+                            TOTAL
+                          </AppText>
+                          <AppText className="mt-1 text-lg font-extrabold">
+                            {formatMoney(total, baseCurrency)}
+                          </AppText>
+                          <AppText tone="muted" className="text-[10px]">
+                            this month
+                          </AppText>
+                        </View>
+                      )}
+                    />
+                  </View>
+                  <View className="flex-1 gap-4">
+                    {categories.slice(0, 4).map((item) => (
+                      <View key={item.id}>
+                        <View className="flex-row items-center">
+                          <View
+                            className="h-2.5 w-2.5 rounded-full"
+                            style={{ backgroundColor: item.color }}
+                          />
+                          <AppText
+                            tone="secondary"
+                            numberOfLines={1}
+                            className="ml-2 flex-1 text-xs font-semibold"
+                          >
+                            {item.name}
+                          </AppText>
+                          <AppText className="text-xs font-bold">
+                            {Math.round((item.total / total) * 100)}%
+                          </AppText>
+                        </View>
                         <AppText
                           tone="muted"
-                          className="text-[10px] font-bold tracking-widest"
+                          className="ml-[18px] mt-1 text-xs"
                         >
-                          TOTAL
-                        </AppText>
-                        <AppText className="mt-1 text-lg font-extrabold">
-                          {formatMoney(total, baseCurrency)}
-                        </AppText>
-                        <AppText tone="muted" className="text-[10px]">
-                          this month
+                          {formatMoney(item.total, baseCurrency)}
                         </AppText>
                       </View>
-                    )}
-                  />
+                    ))}
+                  </View>
                 </View>
-                <View className="flex-1 gap-4">
-                  {categories.slice(0, 4).map((item) => (
-                    <View key={item.id}>
-                      <View className="flex-row items-center">
-                        <View
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <AppText
-                          tone="secondary"
-                          numberOfLines={1}
-                          className="ml-2 flex-1 text-xs font-semibold"
-                        >
-                          {item.name}
-                        </AppText>
-                        <AppText className="text-xs font-bold">
-                          {Math.round((item.total / total) * 100)}%
-                        </AppText>
-                      </View>
-                      <AppText tone="muted" className="ml-[18px] mt-1 text-xs">
-                        {formatMoney(item.total, baseCurrency)}
-                      </AppText>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : (
-              <Empty
-                loading={loading}
-                text="Add expenses to reveal your spending mix."
-              />
-            )}
+              ) : (
+                <Empty
+                  loading={loading}
+                  text="Add expenses to reveal your spending mix."
+                />
+              )}
+            </DataFade>
           </ModernCard>
-        </View>
+        </ContentReveal>
 
-        <View>
+        <ContentReveal delay={140} distance={10} ready={chartsReady}>
           <ModernCard>
             <SectionHeader
               title="Cash flow"
@@ -406,7 +488,11 @@ export default function Stats() {
               icon="bar-chart"
             />
             <Legend />
-            <View className="mt-3 overflow-hidden">
+            <DataFade
+              ready={chartsReady}
+              revision={chartRevision}
+              style={{ marginTop: 12, overflow: "hidden" }}
+            >
               {trend.some((x) => x.income || x.expense) ? (
                 <BarChart
                   key={`bar-${period}-${chartRevision}`}
@@ -424,7 +510,7 @@ export default function Stats() {
                   roundedTop
                   showGradient
                   isAnimated={!reducedMotion}
-                  animationDuration={650}
+                  animationDuration={300}
                   hideRules
                   yAxisThickness={0}
                   xAxisThickness={0}
@@ -446,11 +532,11 @@ export default function Stats() {
                   text="Your cash-flow comparison will appear here."
                 />
               )}
-            </View>
+            </DataFade>
           </ModernCard>
-        </View>
+        </ContentReveal>
 
-        <View>
+        <ContentReveal delay={170} distance={10} ready={chartsReady}>
           <View className="mb-1 flex-row items-end justify-between">
             <View>
               <AppText className="text-xl font-extrabold">Top spending</AppText>
@@ -510,17 +596,21 @@ export default function Stats() {
               </Card>
             </View>
           ))}
-        </View>
+        </ContentReveal>
 
-        <View>
+        <ContentReveal delay={200} distance={10} ready={chartsReady}>
           <ModernCard>
             <SectionHeader
               title="Spending rhythm"
               subtitle="Monthly expense movement"
               icon="analytics"
             />
-            {line.some((x) => x.value) ? (
-              <View className="mt-3 overflow-hidden">
+            <DataFade
+              ready={chartsReady}
+              revision={chartRevision}
+              style={{ marginTop: 12, overflow: "hidden" }}
+            >
+              {line.some((x) => x.value) ? (
                 <LineChart
                   key={`line-${period}-${chartRevision}`}
                   data={line}
@@ -544,8 +634,8 @@ export default function Stats() {
                   thickness={3}
                   isAnimated={!reducedMotion}
                   animateOnDataChange={!reducedMotion}
-                  animationDuration={750}
-                  onDataChangeAnimationDuration={750}
+                  animationDuration={300}
+                  onDataChangeAnimationDuration={240}
                   interpolateMissingValues={false}
                   extrapolateMissingValues={false}
                   hideRules
@@ -591,15 +681,15 @@ export default function Stats() {
                     ),
                   }}
                 />
-              </View>
-            ) : (
-              <Empty
-                loading={loading}
-                text="Track for a few months to reveal your trend."
-              />
-            )}
+              ) : (
+                <Empty
+                  loading={loading}
+                  text="Track for a few months to reveal your trend."
+                />
+              )}
+            </DataFade>
           </ModernCard>
-        </View>
+        </ContentReveal>
       </ScrollView>
     </SafeAreaView>
   );

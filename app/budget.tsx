@@ -9,6 +9,7 @@ import {
   toMinorUnits,
 } from "@/db/repository";
 import { useAppPreferences, useAppTheme } from "@/lib/theme/useAppTheme";
+import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import {
   requestNotificationPermission,
   supportsNativeNotifications,
@@ -31,6 +32,7 @@ export default function BudgetScreen() {
   const { colors, isDark } = useAppTheme();
   const { baseCurrency } = useAppPreferences();
   const router = useRouter();
+  const { canUse, openPaywall } = useSubscription();
   const month = monthKey(new Date());
   const [amount, setAmount] = useState("");
   const [alerts, setAlerts] = useState(true);
@@ -49,6 +51,10 @@ export default function BudgetScreen() {
     });
   }, [baseCurrency, month]);
   const save = async () => {
+    if (!canUse("budgets")) {
+      openPaywall("budget");
+      return;
+    }
     const value = toMinorUnits(amount);
     if (value <= 0) return;
     setSaving(true);
@@ -176,7 +182,13 @@ export default function BudgetScreen() {
                 </View>
                 <Switch
                   value={alerts}
-                  onValueChange={setAlerts}
+                  onValueChange={(value) => {
+                    if (value && !canUse("budget_alerts")) {
+                      openPaywall("budget_alert");
+                      return;
+                    }
+                    setAlerts(value);
+                  }}
                   trackColor={{
                     false: colors.background.subtle,
                     true: colors.brand.primary,

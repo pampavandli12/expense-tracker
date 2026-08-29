@@ -16,7 +16,7 @@ Use this as a release gate. Do not submit merely because a production binary bui
 - [x] Typed Drizzle schema over Expo SQLite.
 - [x] Versioned, bundled migration foundation.
 - [x] Income, expense, account, transfer, budget, history, category, Stats, Settings, and export workflows implemented.
-- [x] RevenueCat boundary and hard-paywall UI implemented.
+- [x] RevenueCat boundary and contextual freemium paywall UI implemented.
 - [x] Opt-in system biometric app-lock flow implemented for iOS and Android.
 - [x] EAS development, preview, and production profiles added.
 - [x] TypeScript, lint, Jest, Expo dependency compatibility, and Android/iOS Metro exports passed at the latest checkpoint.
@@ -55,7 +55,7 @@ The repository must not invent or silently change the company identifier. Finali
 - [ ] Confirm English-only v1 or define required localization.
 - [ ] Confirm INR default and multi-currency behavior described in the product copy.
 - [ ] Approve subscription names, monthly/annual pricing, trial length, eligibility, and renewal copy.
-- [ ] Approve the hard-paywall benefit statements and ensure they are not misleading.
+- [ ] Approve the free/Premium feature split and ensure every paywall benefit is accurate.
 - [ ] Publish Privacy Policy on a stable HTTPS company URL.
 - [ ] Publish Terms of Use on a stable HTTPS company URL.
 - [ ] Publish support/contact page and support email.
@@ -80,7 +80,7 @@ The repository must not invent or silently change the company identifier. Finali
 - [ ] Review any `eas build:configure` changes before committing.
 - [ ] Add final production EAS environment variables.
 - [ ] Ensure development/preview variables cannot accidentally be used in production.
-- [ ] Confirm preview/production builds never show the development paywall bypass.
+- [ ] Confirm preview/production builds enforce Premium features without blocking free app access.
 - [ ] Keep web excluded unless a separate web product is intentionally approved.
 
 ## P0 — financial correctness and data integrity
@@ -163,7 +163,7 @@ Complete only after permanent identifiers and store records exist.
 - [ ] Billing issue/grace period behavior matches product policy.
 - [ ] Cached entitlement behaves acceptably during temporary offline periods.
 - [ ] Manage-subscription links open the correct platform destination.
-- [ ] A clean preview/production install cannot enter tabs without active entitlement.
+- [ ] A clean preview/production install can enter free tabs and cannot use guarded Premium actions without entitlement.
 - [ ] Development bypass is unreachable in preview and production binaries.
 - [ ] Paywall shows Terms, Privacy, renewal period, price, trial terms, restore, and required disclosures.
 
@@ -299,7 +299,7 @@ Prepare separately for iOS and Android where dimensions/copy differ.
 - [ ] Marketing URL if available.
 - [ ] Age/content rating questionnaire.
 - [ ] Subscription review notes and paywall screenshots.
-- [ ] Reviewer instructions explaining the hard paywall and sandbox account/process.
+- [ ] Reviewer instructions explaining the freemium model and sandbox purchase process.
 - [ ] Export compliance/encryption answers.
 - [ ] Copyright/company information.
 - [ ] Countries, pricing, tax category, and availability.

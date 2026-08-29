@@ -1,4 +1,5 @@
 import AppText from "@/components/AppText";
+import { ContentReveal } from "@/components/ContentReveal";
 import DateField from "@/components/DateField";
 import { Choice, Header, MoneyInput, PrimaryButton } from "@/components/ui";
 import {
@@ -47,6 +48,7 @@ export default function TransactionForm({
   );
   const [occurredAt, setOccurredAt] = useState(new Date());
   const [saving, setSaving] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
   useEffect(() => {
     let active = true;
     Promise.all([
@@ -81,6 +83,7 @@ export default function TransactionForm({
           setAccountId(availableAccounts[0]?.id ?? "");
           setCategoryId(availableCategories[0]?.id ?? "");
         }
+        setHasLoaded(true);
       })
       .catch((reason) =>
         Alert.alert(
@@ -129,11 +132,13 @@ export default function TransactionForm({
       className="flex-1"
       style={{ backgroundColor: colors.background.base }}
     >
-      <Header
-        title={`${transactionId ? "Edit" : "Add"} ${
-          kind === "expense" ? "Expense" : "Income"
-        }`}
-      />
+      <ContentReveal distance={8} duration={200}>
+        <Header
+          title={`${transactionId ? "Edit" : "Add"} ${
+            kind === "expense" ? "Expense" : "Income"
+          }`}
+        />
+      </ContentReveal>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -147,7 +152,7 @@ export default function TransactionForm({
           }
           contentContainerStyle={{ padding: 20, paddingBottom: 32 }}
         >
-          <View>
+          <ContentReveal delay={25} distance={10} ready={hasLoaded}>
             <LinearGradient
               colors={
                 isDark
@@ -186,8 +191,13 @@ export default function TransactionForm({
                 </AppText>
               )}
             </LinearGradient>
-          </View>
-          <View className="mt-7">
+          </ContentReveal>
+          <ContentReveal
+            delay={55}
+            distance={10}
+            ready={hasLoaded}
+            style={{ marginTop: 28 }}
+          >
             <AppText className="text-lg font-extrabold">
               {kind === "expense" ? "Choose category" : "Income source"}
             </AppText>
@@ -215,11 +225,19 @@ export default function TransactionForm({
                 />
               ))}
             </ScrollView>
-          </View>
+          </ContentReveal>
           {kind === "expense" && (
-            <View
-              className="my-7 flex-row rounded-2xl p-1"
-              style={{ backgroundColor: colors.background.subtle }}
+            <ContentReveal
+              delay={80}
+              distance={10}
+              ready={hasLoaded}
+              style={{
+                marginVertical: 28,
+                flexDirection: "row",
+                borderRadius: 16,
+                padding: 4,
+                backgroundColor: colors.background.subtle,
+              }}
             >
               {(["variable", "fixed"] as const).map((value) => (
                 <Pressable
@@ -244,9 +262,9 @@ export default function TransactionForm({
                   </AppText>
                 </Pressable>
               ))}
-            </View>
+            </ContentReveal>
           )}
-          <View>
+          <ContentReveal delay={95} distance={10} ready={hasLoaded}>
             <AppText className="text-lg font-extrabold">Account</AppText>
             <AppText tone="secondary" className="mb-3 text-sm">
               Where this money belongs
@@ -285,8 +303,8 @@ export default function TransactionForm({
                 </Pressable>
               ))}
             </ScrollView>
-          </View>
-          <View>
+          </ContentReveal>
+          <ContentReveal delay={115} distance={10} ready={hasLoaded}>
             <AppText className="mb-3 mt-7 text-lg font-extrabold">
               Details
             </AppText>
@@ -312,7 +330,7 @@ export default function TransactionForm({
                 textAlignVertical: "top",
               }}
             />
-          </View>
+          </ContentReveal>
         </ScrollView>
         <View
           style={{
