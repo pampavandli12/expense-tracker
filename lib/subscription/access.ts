@@ -19,6 +19,18 @@ export type PaywallSource =
   | "cross_currency_transfer"
   | "advanced_filter";
 
+export type PaywallIntent =
+  | "create_account"
+  | "create_category"
+  | "open_budget"
+  | "enable_budget_alerts"
+  | "configure_budget_alerts";
+
+export type OpenPaywallOptions = {
+  returnTo?: string;
+  intent?: PaywallIntent;
+};
+
 export const FREE_ACTIVE_ACCOUNT_LIMIT = 2;
 
 export const paywallCopy: Record<

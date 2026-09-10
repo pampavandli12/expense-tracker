@@ -32,7 +32,7 @@ export default function Accounts() {
   const { contentBottomPadding } = useTabBarMetrics();
   const { baseCurrency } = useAppPreferences();
   const router = useRouter();
-  const { canUse, openPaywall } = useSubscription();
+  const { canUse, openPaywall, consumePaywallIntent } = useSubscription();
   const [rows, setRows] = useState<Row[]>([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Row>();
@@ -48,7 +48,11 @@ export default function Accounts() {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load]),
+      if (consumePaywallIntent() === "create_account") {
+        setEditing(undefined);
+        setOpen(true);
+      }
+    }, [consumePaywallIntent, load]),
   );
   const total = rows
     .filter((r) => r.currency === baseCurrency)

@@ -98,16 +98,17 @@ Do not commit `.env.local`, private signing files, Play service-account JSON, Ap
 The repository provides [.env.example](./.env.example):
 
 ```dotenv
+EXPO_PUBLIC_REVENUECAT_TEST_STORE_KEY=test_your_test_store_key
 EXPO_PUBLIC_REVENUECAT_IOS_KEY=appl_your_public_sdk_key
 EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_your_public_sdk_key
-EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID=premium
+EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID=expensetracker_pro
 EXPO_PUBLIC_TERMS_URL=https://your-domain.example/terms
 EXPO_PUBLIC_PRIVACY_URL=https://your-domain.example/privacy
 ```
 
 RevenueCat public SDK keys are client-side identifiers, not private server credentials. Anything prefixed with `EXPO_PUBLIC_` is embedded in the application bundle and must be treated as publicly readable. Store credentials and private API keys must never use this prefix.
 
-RevenueCat keys are intentionally optional during the current development phase. Without them, the development paywall exposes a `__DEV__`-only preview action. Release builds must never rely on that preview path.
+During development, set `EXPO_PUBLIC_REVENUECAT_TEST_STORE_KEY` to your RevenueCat Test Store key. The purchases service uses it automatically in `__DEV__` builds so you can exercise purchase, restore, and entitlement flows without App Store or Play Console products. Release and preview builds ignore the Test Store key and require the platform-specific `appl_` / `goog_` keys instead.
 
 ## Run with Expo Go
 
@@ -141,7 +142,7 @@ Expo Go limitations for this project:
 - It cannot perform real App Store or Play Store purchases.
 - Android native notification behavior cannot be fully tested in Expo Go.
 - iOS Face ID cannot be tested in Expo Go; use a development build. Touch ID and Android biometric behavior may be exercised in Expo Go, but release acceptance still requires native builds.
-- The native date-picker path is replaced by the app's Expo Go-safe fallback.
+- The native date picker works in Expo Go and development builds for transaction dates.
 - Native-module behavior must be verified in a development build before release.
 
 If the terminal says `No development build ... is installed`, Expo was started in development-client mode. Stop it and run `npm start` or `npx expo start --go --clear`.
@@ -237,7 +238,7 @@ EAS provides `development`, `preview`, and `production` environments. Configure 
 ```bash
 npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_REVENUECAT_IOS_KEY --value <ios-public-key> --visibility sensitive
 npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_REVENUECAT_ANDROID_KEY --value <android-public-key> --visibility sensitive
-npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID --value premium --visibility plaintext
+npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID --value expensetracker_pro --visibility plaintext
 npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_TERMS_URL --value <terms-url> --visibility plaintext
 npx eas-cli@latest env:create --environment production --name EXPO_PUBLIC_PRIVACY_URL --value <privacy-url> --visibility plaintext
 ```
@@ -316,7 +317,7 @@ Complete this only after both store app records and permanent identifiers exist:
 1. Create monthly and annual auto-renewing subscription products in App Store Connect and Google Play Console.
 2. Configure trial/introductory-offer eligibility in the stores.
 3. Create the iOS and Android apps in RevenueCat using the exact store identifiers.
-4. Configure one entitlement named `premium`.
+4. Configure one entitlement (currently `expensetracker_pro`) and attach Test Store products.
 5. Create the current offering and attach monthly and annual packages.
 6. Add the platform public SDK keys to EAS environments.
 7. Verify localized prices and package availability on the custom paywall.

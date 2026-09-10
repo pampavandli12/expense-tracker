@@ -1,10 +1,11 @@
 import {
   configurePurchases,
   hasPremium,
+  onPremiumChange,
   purchasePackage,
   restorePurchases,
 } from "@/services/purchases";
-import { useRouter } from "expo-router";
+import { usePathname, useRouter } from "expo-router";
 import {
   createContext,
   useCallback,
@@ -20,16 +21,20 @@ import { AppState } from "react-native";
 import {
   featureSource,
   type AccessLevel,
+  type OpenPaywallOptions,
+  type PaywallIntent,
   type PaywallSource,
   type PremiumFeature,
 } from "./access";
+import { intentForSource } from "./paywallNavigation";
 
 type SubscriptionContextValue = {
   accessLevel: AccessLevel;
   configured: boolean;
   loading: boolean;
   canUse: (feature: PremiumFeature) => boolean;
-  openPaywall: (source: PaywallSource) => void;
+  openPaywall: (source: PaywallSource, options?: OpenPaywallOptions) => void;
+  consumePaywallIntent: () => PaywallIntent | undefined;
   requireFeature: (feature: PremiumFeature) => boolean;
   refresh: () => Promise<boolean>;
   purchase: (pkg: PurchasesPackage) => Promise<boolean>;
@@ -42,10 +47,19 @@ const SubscriptionContext = createContext<SubscriptionContextValue | null>(
 
 export function SubscriptionProvider({ children }: PropsWithChildren) {
   const router = useRouter();
+  const pathname = usePathname();
   const [accessLevel, setAccessLevel] = useState<AccessLevel>("free");
   const accessLevelRef = useRef<AccessLevel>("free");
+  const pendingIntentRef = useRef<PaywallIntent | undefined>(undefined);
   const [configured, setConfigured] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  const setPremiumAccess = useCallback((premium: boolean) => {
+    const nextAccessLevel = premium ? "premium" : "free";
+    accessLevelRef.current = nextAccessLevel;
+    setAccessLevel(nextAccessLevel);
+    return premium;
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -53,9 +67,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
       const isConfigured = await configurePurchases();
       setConfigured(isConfigured);
       const premium = isConfigured ? await hasPremium() : false;
-      const nextAccessLevel = premium ? "premium" : "free";
-      accessLevelRef.current = nextAccessLevel;
-      setAccessLevel(nextAccessLevel);
+      setPremiumAccess(premium);
       return premium;
     } catch {
       return accessLevelRef.current === "premium";
@@ -72,11 +84,35 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
     return () => subscription.remove();
   }, [refresh]);
 
+  useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
+    void configurePurchases().then((isConfigured) => {
+      if (!isConfigured) return;
+      unsubscribe = onPremiumChange(setPremiumAccess);
+    });
+    return () => unsubscribe?.();
+  }, [setPremiumAccess]);
+
+  const consumePaywallIntent = useCallback(() => {
+    const intent = pendingIntentRef.current;
+    pendingIntentRef.current = undefined;
+    return intent;
+  }, []);
+
   const openPaywall = useCallback(
-    (source: PaywallSource) => {
-      router.push({ pathname: "/paywall", params: { source } });
+    (source: PaywallSource, options?: OpenPaywallOptions) => {
+      const intent = options?.intent ?? intentForSource(source);
+      pendingIntentRef.current = intent;
+      router.push({
+        pathname: "/paywall",
+        params: {
+          source,
+          returnTo: options?.returnTo ?? pathname,
+          ...(intent ? { intent } : {}),
+        },
+      });
     },
-    [router],
+    [pathname, router],
   );
 
   const canUse = useCallback(
@@ -87,28 +123,26 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
   const requireFeature = useCallback(
     (feature: PremiumFeature) => {
       if (canUse(feature)) return true;
-      openPaywall(featureSource(feature));
+      const source = featureSource(feature);
+      openPaywall(source, { intent: intentForSource(source) });
       return false;
     },
     [canUse, openPaywall],
   );
 
   const purchase = useCallback(async (pkg: PurchasesPackage) => {
-    const premium = await purchasePackage(pkg);
-    if (premium) {
-      accessLevelRef.current = "premium";
-      setAccessLevel("premium");
-    }
+    await purchasePackage(pkg);
+    const premium = await hasPremium();
+    if (premium) setPremiumAccess(true);
     return premium;
-  }, []);
+  }, [setPremiumAccess]);
 
   const restore = useCallback(async () => {
-    const premium = await restorePurchases();
-    const nextAccessLevel = premium ? "premium" : "free";
-    accessLevelRef.current = nextAccessLevel;
-    setAccessLevel(nextAccessLevel);
+    await restorePurchases();
+    const premium = await hasPremium();
+    setPremiumAccess(premium);
     return premium;
-  }, []);
+  }, [setPremiumAccess]);
 
   const value = useMemo(
     () => ({
@@ -116,6 +150,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
       configured,
       loading,
       canUse,
+      consumePaywallIntent,
       openPaywall,
       requireFeature,
       refresh,
@@ -126,6 +161,7 @@ export function SubscriptionProvider({ children }: PropsWithChildren) {
       accessLevel,
       canUse,
       configured,
+      consumePaywallIntent,
       loading,
       openPaywall,
       purchase,

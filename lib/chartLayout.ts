@@ -1,5 +1,6 @@
 const AXIS_SECTIONS = 4;
 const CHART_EDGE_INSET = 12;
+const SPENDING_RHYTHM_EDGE_INSET = 16;
 const CURRENCY_SYMBOLS: Record<string, string> = {
   AUD: "A$",
   CAD: "C$",
@@ -106,6 +107,62 @@ export function getBarChartLayout(pointCount: number, plotWidth: number) {
     groupSpacing,
     scrollEnabled: contentWidth > plotWidth + 1,
   };
+}
+
+export function getLineChartLabelLayout() {
+  return {
+    labelsExtraHeight: 8,
+    labelsDistanceFromXaxis: 6,
+    xAxisLabelsHeight: 22,
+    xAxisLabelsVerticalShift: 0,
+    overflowBottom: 4,
+  };
+}
+
+export function getSpendingRhythmLineLayout(pointCount: number, plotWidth: number) {
+  const count = Math.max(1, pointCount);
+  const inset = SPENDING_RHYTHM_EDGE_INSET;
+  const fittedSpacing =
+    count === 1 ? 0 : (plotWidth - inset * 2) / (count - 1);
+  const spacing = count === 1 ? 0 : Math.max(40, fittedSpacing);
+  const contentWidth = inset * 2 + spacing * Math.max(0, count - 1);
+  const scrollEnabled = contentWidth > plotWidth + 1;
+
+  return {
+    initialSpacing: inset,
+    endSpacing: inset,
+    spacing,
+    scrollEnabled,
+    adjustToWidth: !scrollEnabled,
+  };
+}
+
+export function getSpendingRhythmChartConfig(
+  values: number[],
+  currency: string,
+  pointCount: number,
+  plotWidth: number,
+) {
+  const scale = getChartScale(values, currency);
+  const layout = getSpendingRhythmLineLayout(pointCount, plotWidth);
+
+  return {
+    scale: {
+      ...scale,
+      yAxisLabelWidth: scale.yAxisLabelWidth + 6,
+    },
+    layout,
+    height: 188,
+    noOfSectionsBelowXAxis: 0,
+    overflowTop: 12,
+    ...getLineChartLabelLayout(),
+  };
+}
+
+export function formatSpendingRhythmYLabel(label: string, currency: string) {
+  const value = Number(label);
+  if (!Number.isFinite(value) || value < 0) return "";
+  return formatChartAxisValue(value, currency);
 }
 
 export function getLineChartLayout(pointCount: number, plotWidth: number) {

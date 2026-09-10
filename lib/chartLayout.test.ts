@@ -1,8 +1,10 @@
 import {
   formatChartAxisValue,
+  formatSpendingRhythmYLabel,
   getBarChartLayout,
   getChartScale,
   getLineChartLayout,
+  getSpendingRhythmChartConfig,
 } from "./chartLayout";
 
 describe("responsive chart layout", () => {
@@ -29,5 +31,20 @@ describe("responsive chart layout", () => {
       noOfSections: 4,
     });
     expect(formatChartAxisValue(150_000, "INR")).toBe("₹150k");
+  });
+
+  it("anchors the spending rhythm chart at zero and hides negative y-axis labels", () => {
+    expect(getSpendingRhythmChartConfig([0, 5000, 12000], "INR", 3, 276)).toMatchObject({
+      noOfSectionsBelowXAxis: 0,
+      overflowTop: 12,
+      height: 188,
+      layout: {
+        initialSpacing: 16,
+        endSpacing: 16,
+        adjustToWidth: true,
+      },
+    });
+    expect(formatSpendingRhythmYLabel("-5000", "INR")).toBe("");
+    expect(formatSpendingRhythmYLabel("5000", "INR")).toBe("₹5k");
   });
 });

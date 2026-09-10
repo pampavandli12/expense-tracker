@@ -4,14 +4,25 @@ import {
   paywallCopy,
   type PaywallSource,
 } from "@/lib/subscription/access";
+import {
+  paramString,
+  resolvePaywallReturn,
+  subscriptionSuccessDestination,
+} from "@/lib/subscription/paywallNavigation";
 import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
 import { useAppTheme } from "@/lib/theme/useAppTheme";
-import { getPackages } from "@/services/purchases";
+import {
+  ENTITLEMENT_ID,
+  describeEntitlementMismatch,
+  getCustomerInfo,
+  getPackages,
+} from "@/services/purchases";
 import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import type { PurchasesPackage } from "react-native-purchases";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   Linking,
@@ -61,8 +72,13 @@ export default function Paywall() {
   const compact = width < 380;
   const stackFeatures = width < 460;
   const router = useRouter();
-  const params = useLocalSearchParams<{ source?: string }>();
-  const { purchase, restore: restoreSubscription } = useSubscription();
+  const params = useLocalSearchParams<{
+    source?: string;
+    returnTo?: string;
+    intent?: string;
+  }>();
+  const { purchase, restore: restoreSubscription, refresh, consumePaywallIntent } =
+    useSubscription();
   const source =
     params.source && params.source in paywallCopy
       ? (params.source as PaywallSource)
@@ -91,21 +107,58 @@ export default function Paywall() {
   useEffect(() => {
     load();
   }, []);
-  const close = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace("/(tabs)");
-  };
+  const returnTo = paramString(params.returnTo);
+  const close = useCallback(() => {
+    consumePaywallIntent();
+    const destination = resolvePaywallReturn(
+      returnTo,
+      router.canGoBack(),
+    );
+    if (destination.method === "back") router.back();
+    else router.replace(destination.href);
+  }, [consumePaywallIntent, returnTo, router]);
+  const goHome = useCallback(() => {
+    consumePaywallIntent();
+    const destination = subscriptionSuccessDestination();
+    router.replace(destination.href);
+  }, [consumePaywallIntent, router]);
+  const showSubscriptionSuccess = useCallback(() => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert(
+      "Welcome to Premium",
+      "Your subscription is active. Every Premium feature is now unlocked.",
+      [{ text: "Continue", onPress: goHome }],
+    );
+  }, [goHome]);
+  const confirmPremiumAccess = useCallback(async () => {
+    const premium = await refresh();
+    if (premium) {
+      showSubscriptionSuccess();
+      return true;
+    }
+    const info = await getCustomerInfo();
+    const detail = info
+      ? describeEntitlementMismatch(info)
+      : `The app expects entitlement "${ENTITLEMENT_ID}".`;
+    Alert.alert(
+      "Purchase not completed",
+      `${detail}\n\nIn RevenueCat, confirm:\n1. Products are attached to the "${ENTITLEMENT_ID}" entitlement\n2. Those products are in your current offering\n3. Project Settings → Sandbox testing access is set to "Anybody"`,
+    );
+    return false;
+  }, [refresh, showSubscriptionSuccess]);
   const buy = async () => {
     if (!selected) return;
     setBusy(true);
     try {
-      if (await purchase(selected)) close();
+      await purchase(selected);
+      await confirmPremiumAccess();
     } catch (e: any) {
-      if (!e?.userCancelled)
+      if (!e?.userCancelled) {
         Alert.alert(
-          "Purchase not completed",
+          "Purchase failed",
           e?.message ?? "Please try again.",
         );
+      }
     } finally {
       setBusy(false);
     }
@@ -113,12 +166,19 @@ export default function Paywall() {
   const restore = async () => {
     setBusy(true);
     try {
-      if (await restoreSubscription()) close();
+      await restoreSubscription();
+      const premium = await refresh();
+      if (premium) showSubscriptionSuccess();
       else
         Alert.alert(
           "No purchase found",
           "We couldn't find an active subscription for this store account.",
         );
+    } catch (e: any) {
+      Alert.alert(
+        "Restore failed",
+        e?.message ?? "Please try again.",
+      );
     } finally {
       setBusy(false);
     }

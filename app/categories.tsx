@@ -43,7 +43,7 @@ const categoryColors = [
 
 export default function CategoriesScreen() {
   const { colors } = useAppTheme();
-  const { requireFeature } = useSubscription();
+  const { requireFeature, consumePaywallIntent } = useSubscription();
   const [kind, setKind] = useState<"expense" | "income">("expense");
   const [rows, setRows] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Category>();
@@ -52,7 +52,11 @@ export default function CategoriesScreen() {
   useFocusEffect(
     useCallback(() => {
       load();
-    }, [load]),
+      if (consumePaywallIntent() === "create_category") {
+        setEditing(undefined);
+        setOpen(true);
+      }
+    }, [consumePaywallIntent, load]),
   );
 
   return (

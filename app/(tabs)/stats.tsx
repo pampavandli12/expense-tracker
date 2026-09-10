@@ -11,9 +11,10 @@ import {
 import type { Account } from "@/db/schema";
 import {
   formatChartAxisValue,
+  formatSpendingRhythmYLabel,
   getBarChartLayout,
   getChartScale,
-  getLineChartLayout,
+  getSpendingRhythmChartConfig,
 } from "@/lib/chartLayout";
 import { useTabBarMetrics } from "@/lib/navigation/tabBar";
 import { useSubscription } from "@/lib/subscription/SubscriptionProvider";
@@ -167,29 +168,36 @@ function PremiumStats() {
       ),
     [baseCurrency, trend],
   );
-  const lineScale = useMemo(
-    () =>
-      getChartScale(
-        trend.map((item) => item.expense / 100),
-        baseCurrency,
-      ),
-    [baseCurrency, trend],
-  );
   const barPlotWidth = Math.max(
     180,
     cardContentWidth - barScale.yAxisLabelWidth,
   );
+  const spendingRhythmChart = useMemo(() => {
+    const values = trend.map((item) => item.expense / 100);
+    const provisional = getSpendingRhythmChartConfig(
+      values,
+      baseCurrency,
+      trend.length,
+      cardContentWidth,
+    );
+    const plotWidth = Math.max(
+      180,
+      cardContentWidth - provisional.scale.yAxisLabelWidth,
+    );
+    return getSpendingRhythmChartConfig(
+      values,
+      baseCurrency,
+      trend.length,
+      plotWidth,
+    );
+  }, [baseCurrency, cardContentWidth, trend]);
   const linePlotWidth = Math.max(
     180,
-    cardContentWidth - lineScale.yAxisLabelWidth,
+    cardContentWidth - spendingRhythmChart.scale.yAxisLabelWidth,
   );
   const barLayout = useMemo(
     () => getBarChartLayout(trend.length, barPlotWidth),
     [barPlotWidth, trend.length],
-  );
-  const lineLayout = useMemo(
-    () => getLineChartLayout(trend.length, linePlotWidth),
-    [linePlotWidth, trend.length],
   );
   const chartsReady =
     !loading &&
@@ -230,13 +238,16 @@ function PremiumStats() {
   );
   const line = useMemo(
     () =>
-      trend.map((item) => ({
-        value: item.expense / 100,
-        label: item.month,
-        labelTextStyle: xAxisLabelStyle,
-        dataPointColor: "#2463EB",
-        dataPointRadius: 4,
-      })),
+      trend.map((item) => {
+        const value = item.expense / 100;
+        return {
+          value,
+          label: item.month,
+          labelTextStyle: xAxisLabelStyle,
+          dataPointColor: "#2463EB",
+          dataPointRadius: value > 0 ? 4 : 0,
+        };
+      }),
     [trend, xAxisLabelStyle],
   );
 
@@ -608,48 +619,69 @@ function PremiumStats() {
             <DataFade
               ready={chartsReady}
               revision={chartRevision}
-              style={{ marginTop: 12, overflow: "hidden" }}
+              style={{ marginTop: 12, paddingBottom: 4 }}
             >
               {line.some((x) => x.value) ? (
                 <LineChart
                   key={`line-${period}-${chartRevision}`}
                   data={line}
                   width={linePlotWidth}
-                  height={205}
-                  spacing={lineLayout.spacing}
-                  initialSpacing={lineLayout.initialSpacing}
-                  endSpacing={lineLayout.endSpacing}
-                  disableScroll={!lineLayout.scrollEnabled}
+                  height={spendingRhythmChart.height}
+                  spacing={spendingRhythmChart.layout.spacing}
+                  initialSpacing={spendingRhythmChart.layout.initialSpacing}
+                  endSpacing={spendingRhythmChart.layout.endSpacing}
+                  adjustToWidth={spendingRhythmChart.layout.adjustToWidth}
+                  disableScroll={!spendingRhythmChart.layout.scrollEnabled}
                   showScrollIndicator={false}
-                  scrollToEnd={lineLayout.scrollEnabled}
+                  scrollToEnd={spendingRhythmChart.layout.scrollEnabled}
                   scrollAnimation={!reducedMotion}
                   nestedScrollEnabled
-                  curved
                   area
                   color="#2463EB"
-                  startFillColor={isDark ? "#2463EB66" : "#BFD3FF"}
-                  endFillColor={colors.background.surface}
-                  startOpacity={0.45}
-                  endOpacity={0.02}
-                  thickness={3}
+                  startFillColor={isDark ? "#2463EB55" : "#BFD3FF"}
+                  endFillColor={isDark ? "#2463EB08" : "#E8F0FF"}
+                  startOpacity={0.42}
+                  endOpacity={0.04}
+                  thickness={2.5}
                   isAnimated={!reducedMotion}
                   animateOnDataChange={!reducedMotion}
                   animationDuration={300}
                   onDataChangeAnimationDuration={240}
                   interpolateMissingValues={false}
                   extrapolateMissingValues={false}
-                  hideRules
+                  mostNegativeValue={0}
+                  hideRules={false}
+                  rulesType="solid"
+                  rulesColor={colors.border.soft}
+                  rulesThickness={1}
                   yAxisThickness={0}
-                  xAxisThickness={0}
-                  yAxisLabelWidth={lineScale.yAxisLabelWidth}
-                  yAxisTextStyle={{ color: colors.text.muted, fontSize: 10 }}
+                  xAxisThickness={1}
+                  xAxisColor={colors.border.soft}
+                  noOfSectionsBelowXAxis={
+                    spendingRhythmChart.noOfSectionsBelowXAxis
+                  }
+                  overflowTop={spendingRhythmChart.overflowTop}
+                  yAxisLabelWidth={spendingRhythmChart.scale.yAxisLabelWidth}
+                  yAxisTextStyle={{
+                    color: colors.text.muted,
+                    fontSize: 10,
+                    width: spendingRhythmChart.scale.yAxisLabelWidth - 4,
+                  }}
                   xAxisTextNumberOfLines={1}
-                  xAxisLabelsHeight={22}
-                  noOfSections={lineScale.noOfSections}
-                  maxValue={lineScale.maxValue}
-                  stepValue={lineScale.stepValue}
+                  xAxisLabelsHeight={spendingRhythmChart.xAxisLabelsHeight}
+                  labelsDistanceFromXaxis={
+                    spendingRhythmChart.labelsDistanceFromXaxis
+                  }
+                  xAxisLabelsVerticalShift={
+                    spendingRhythmChart.xAxisLabelsVerticalShift
+                  }
+                  overflowBottom={spendingRhythmChart.overflowBottom}
+                  labelsExtraHeight={spendingRhythmChart.labelsExtraHeight}
+                  noOfSections={spendingRhythmChart.scale.noOfSections}
+                  maxValue={spendingRhythmChart.scale.maxValue}
+                  stepValue={spendingRhythmChart.scale.stepValue}
                   formatYLabel={(label: string) =>
-                    formatChartAxisValue(Number(label), baseCurrency)
+                    formatSpendingRhythmYLabel(label, baseCurrency)
                   }
                   focusEnabled
                   showStripOnFocus

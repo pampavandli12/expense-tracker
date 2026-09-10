@@ -69,6 +69,7 @@ export default function Settings() {
     loading: subscriptionLoading,
     openPaywall,
     restore: restoreSubscription,
+    consumePaywallIntent,
   } = useSubscription();
   const [currencies, setCurrencies] = useState<string[]>([baseCurrency]);
   const [notificationStatus, setNotificationStatus] =
@@ -231,6 +232,14 @@ export default function Settings() {
     refreshStatus();
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      if (consumePaywallIntent() === "configure_budget_alerts") {
+        void configureNotifications();
+      }
+    }, [consumePaywallIntent]),
+  );
+
   const showAppLockFailure = (message: string, error: string) => {
     if (
       error === "user_cancel" ||
@@ -285,8 +294,8 @@ export default function Settings() {
     try {
       if (!purchasesConfigured) {
         Alert.alert(
-          "RevenueCat setup pending",
-          "Purchase keys will be configured during the final release stage.",
+          "Subscriptions unavailable",
+          "RevenueCat is not configured for this build. Add the platform SDK key and rebuild.",
         );
         return;
       }
@@ -381,7 +390,10 @@ export default function Settings() {
           onPress:
             accessLevel === "premium"
               ? configureNotifications
-              : () => openPaywall("budget_alert"),
+              : () =>
+                  openPaywall("budget_alert", {
+                    intent: "configure_budget_alerts",
+                  }),
         },
       ],
     },

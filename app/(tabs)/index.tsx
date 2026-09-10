@@ -28,7 +28,7 @@ export default function Home() {
   const { contentBottomPadding } = useTabBarMetrics();
   const { baseCurrency } = useAppPreferences();
   const router: any = useRouter();
-  const { canUse, openPaywall } = useSubscription();
+  const { canUse, openPaywall, consumePaywallIntent } = useSubscription();
   const [date, setDate] = useState(new Date());
   const [summary, setSummary] = useState<Summary>({
     income: 0,
@@ -61,7 +61,10 @@ export default function Home() {
         setBudgetSpent(allAccountsSummary.expense);
         setHasLoaded(true);
       });
-    }, [accountId, baseCurrency, key]),
+      if (consumePaywallIntent() === "open_budget") {
+        router.push("/budget");
+      }
+    }, [accountId, baseCurrency, consumePaywallIntent, key, router]),
   );
   const moveMonth = (delta: number) => {
     Haptics.selectionAsync();

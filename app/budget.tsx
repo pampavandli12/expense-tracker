@@ -16,8 +16,8 @@ import {
 } from "@/services/notifications";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -32,7 +32,7 @@ export default function BudgetScreen() {
   const { colors, isDark } = useAppTheme();
   const { baseCurrency } = useAppPreferences();
   const router = useRouter();
-  const { canUse, openPaywall } = useSubscription();
+  const { canUse, openPaywall, consumePaywallIntent } = useSubscription();
   const month = monthKey(new Date());
   const [amount, setAmount] = useState("");
   const [alerts, setAlerts] = useState(true);
@@ -50,9 +50,16 @@ export default function BudgetScreen() {
       setSuggestion(suggested);
     });
   }, [baseCurrency, month]);
+  useFocusEffect(
+    useCallback(() => {
+      if (consumePaywallIntent() === "enable_budget_alerts") {
+        setAlerts(true);
+      }
+    }, [consumePaywallIntent]),
+  );
   const save = async () => {
     if (!canUse("budgets")) {
-      openPaywall("budget");
+      openPaywall("budget", { returnTo: "/budget" });
       return;
     }
     const value = toMinorUnits(amount);
@@ -184,7 +191,10 @@ export default function BudgetScreen() {
                   value={alerts}
                   onValueChange={(value) => {
                     if (value && !canUse("budget_alerts")) {
-                      openPaywall("budget_alert");
+                      openPaywall("budget_alert", {
+                        returnTo: "/budget",
+                        intent: "enable_budget_alerts",
+                      });
                       return;
                     }
                     setAlerts(value);
