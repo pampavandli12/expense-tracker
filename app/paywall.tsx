@@ -15,7 +15,7 @@ import {
   ENTITLEMENT_ID,
   describeEntitlementMismatch,
   getCustomerInfo,
-  getPackages,
+  loadSubscriptionPlans,
 } from "@/services/purchases";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
@@ -92,17 +92,19 @@ export default function Paywall() {
   const load = async () => {
     setLoading(true);
     setError(undefined);
-    try {
-      const value = await getPackages();
-      setPackages(value);
-      setSelected(value.find((p) => p.packageType === "ANNUAL") ?? value[0]);
-      if (!value.length)
-        setError("Subscriptions are not configured for this build yet.");
-    } catch {
-      setError("We couldn't load plans. Check your connection and try again.");
-    } finally {
-      setLoading(false);
+    const result = await loadSubscriptionPlans();
+    if (result.ok) {
+      setPackages(result.packages);
+      setSelected(
+        result.packages.find((p) => p.packageType === "ANNUAL") ??
+          result.packages[0],
+      );
+    } else {
+      setPackages([]);
+      setSelected(undefined);
+      setError(result.message);
     }
+    setLoading(false);
   };
   useEffect(() => {
     load();

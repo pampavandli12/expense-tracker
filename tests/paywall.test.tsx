@@ -2,7 +2,7 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Alert } from "react-native";
 
 import Paywall from "@/app/paywall";
-import { getPackages } from "@/services/purchases";
+import { loadSubscriptionPlans } from "@/services/purchases";
 
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
@@ -33,7 +33,7 @@ jest.mock("@/lib/subscription/SubscriptionProvider", () => ({
 
 jest.mock("@/services/purchases", () => ({
   ENTITLEMENT_ID: "premium",
-  getPackages: jest.fn(),
+  loadSubscriptionPlans: jest.fn(),
   getCustomerInfo: jest.fn().mockResolvedValue({
     entitlements: { active: {} },
   }),
@@ -60,7 +60,7 @@ jest.mock("@expo/vector-icons", () => ({
   Ionicons: () => null,
 }));
 
-const getPackagesMock = jest.mocked(getPackages);
+const loadSubscriptionPlansMock = jest.mocked(loadSubscriptionPlans);
 
 describe("paywall states", () => {
   beforeEach(() => {
@@ -68,7 +68,10 @@ describe("paywall states", () => {
   });
 
   it("opens bundled legal content when production URLs are not configured", async () => {
-    getPackagesMock.mockResolvedValue([]);
+    loadSubscriptionPlansMock.mockResolvedValue({
+      ok: false,
+      message: "Subscriptions are not configured for this build yet.",
+    });
     const screen = render(<Paywall />);
     await waitFor(() => expect(screen.getByText("Terms")).toBeTruthy());
 
@@ -80,7 +83,10 @@ describe("paywall states", () => {
   });
 
   it("shows a retryable state when offerings are unavailable", async () => {
-    getPackagesMock.mockResolvedValue([]);
+    loadSubscriptionPlansMock.mockResolvedValue({
+      ok: false,
+      message: "Subscriptions are not configured for this build yet.",
+    });
     const screen = render(<Paywall />);
     await act(async () => undefined);
     await waitFor(() =>
@@ -90,13 +96,21 @@ describe("paywall states", () => {
         ),
       ).toBeTruthy(),
     );
-    getPackagesMock.mockResolvedValue([]);
+    loadSubscriptionPlansMock.mockResolvedValue({
+      ok: false,
+      message: "Subscriptions are not configured for this build yet.",
+    });
     await act(async () => fireEvent.press(screen.getByText("Retry")));
-    await waitFor(() => expect(getPackagesMock).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(loadSubscriptionPlansMock).toHaveBeenCalledTimes(2),
+    );
   });
 
   it("explains every premium capability", async () => {
-    getPackagesMock.mockResolvedValue([]);
+    loadSubscriptionPlansMock.mockResolvedValue({
+      ok: false,
+      message: "Subscriptions are not configured for this build yet.",
+    });
     const screen = render(<Paywall />);
     await waitFor(() =>
       expect(
@@ -128,7 +142,7 @@ describe("paywall states", () => {
         subscriptionPeriod: "P1Y",
       },
     } as never;
-    getPackagesMock.mockResolvedValue([annual]);
+    loadSubscriptionPlansMock.mockResolvedValue({ ok: true, packages: [annual] });
     mockPurchase.mockRejectedValue({ userCancelled: true });
     mockRestore.mockResolvedValue(false);
     const alert = jest
@@ -160,7 +174,7 @@ describe("paywall states", () => {
         subscriptionPeriod: "P1Y",
       },
     } as never;
-    getPackagesMock.mockResolvedValue([annual]);
+    loadSubscriptionPlansMock.mockResolvedValue({ ok: true, packages: [annual] });
     mockPurchase.mockResolvedValue(true);
     mockRefresh.mockResolvedValue(true);
     const alert = jest
@@ -196,7 +210,7 @@ describe("paywall states", () => {
         subscriptionPeriod: "P1Y",
       },
     } as never;
-    getPackagesMock.mockResolvedValue([annual]);
+    loadSubscriptionPlansMock.mockResolvedValue({ ok: true, packages: [annual] });
     mockPurchase.mockResolvedValue(false);
     mockRefresh.mockResolvedValue(false);
     const alert = jest
