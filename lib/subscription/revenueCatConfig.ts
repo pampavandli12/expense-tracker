@@ -8,16 +8,26 @@ export type RevenueCatKeyConfig = {
   androidKey?: string;
 };
 
+// Direct process.env access is required so Expo can inline EXPO_PUBLIC_* values
+// into release builds. Dynamic access like env.EXPO_PUBLIC_* stays undefined.
 export const REVENUECAT_ENTITLEMENT_ID =
   process.env.EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID ?? "expensetracker_pro";
 
-export function readRevenueCatKeyConfig(
-  env: Record<string, string | undefined> = process.env,
+export function readRevenueCatKeyConfigFromEnv(
+  env: Record<string, string | undefined>,
 ): RevenueCatKeyConfig {
   return {
     testStoreKey: env.EXPO_PUBLIC_REVENUECAT_TEST_STORE_KEY,
     iosKey: env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
     androidKey: env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
+  };
+}
+
+export function readRevenueCatKeyConfig(): RevenueCatKeyConfig {
+  return {
+    testStoreKey: process.env.EXPO_PUBLIC_REVENUECAT_TEST_STORE_KEY,
+    iosKey: process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY,
+    androidKey: process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY,
   };
 }
 

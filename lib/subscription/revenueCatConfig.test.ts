@@ -1,5 +1,5 @@
 import {
-  readRevenueCatKeyConfig,
+  readRevenueCatKeyConfigFromEnv,
   resolveRevenueCatApiKey,
   resolveRevenueCatStore,
 } from "./revenueCatConfig";
@@ -13,7 +13,7 @@ const keys = {
 describe("revenueCatConfig", () => {
   it("reads keys from environment variables", () => {
     expect(
-      readRevenueCatKeyConfig({
+      readRevenueCatKeyConfigFromEnv({
         EXPO_PUBLIC_REVENUECAT_TEST_STORE_KEY: "test_123",
         EXPO_PUBLIC_REVENUECAT_IOS_KEY: "appl_123",
         EXPO_PUBLIC_REVENUECAT_ANDROID_KEY: "goog_123",
